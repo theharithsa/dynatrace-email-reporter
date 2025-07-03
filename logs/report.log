@@ -10,3 +10,140 @@
 [2025-07-03T16:01:10.112Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] ✅ Excel generated in 6 ms
 [2025-07-03T16:01:14.201Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] ✅ Email sent in 4088 ms
 [2025-07-03T16:01:14.202Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] 🟢 Request completed in 4097 ms
+[2025-07-03T16:37:10.944Z] INFO - [6a1f1f23-5fb5-4a6c-aa41-f6af9fcc31a9] 📥 Received /send-report request
+[2025-07-03T16:37:11.140Z] INFO - [6a1f1f23-5fb5-4a6c-aa41-f6af9fcc31a9] ✅ Excel generated in 9 ms
+[2025-07-03T16:37:15.082Z] INFO - [6a1f1f23-5fb5-4a6c-aa41-f6af9fcc31a9] ✅ Email sent in 3900 ms
+[2025-07-03T16:37:15.125Z] INFO - [6a1f1f23-5fb5-4a6c-aa41-f6af9fcc31a9] 🟢 Request completed in 4182 ms
+[2025-07-03T17:07:45.022Z] INFO - [0bc77b71-49bc-4ac2-aad6-c505dad1b17e] ▶️ Starting /send-report with traceId: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:07:45.190Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:07:45.191Z] INFO - [0bc77b71-49bc-4ac2-aad6-c505dad1b17e] 🟡 Generating Excel...
+[2025-07-03T17:07:45.232Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:07:45.281Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:07:45.281Z] INFO - [0bc77b71-49bc-4ac2-aad6-c505dad1b17e] 🟡 Sending email...
+[2025-07-03T17:07:45.323Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:07:49.348Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:07:49.349Z] INFO - [0bc77b71-49bc-4ac2-aad6-c505dad1b17e] ✅ Report sent successfully. Trace ID: 3cfb4887e904302a1ecff796b836f29f
+[2025-07-03T17:12:17.336Z] INFO - [2b093604-50a7-46fb-a67a-91bcc5cee649] ▶️ Starting /send-report with traceId: f7dc0a7225b41e5ae9fa3077fd971863
+[2025-07-03T17:12:17.505Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: f7dc0a7225b41e5ae9fa3077fd971863
+[2025-07-03T17:12:17.513Z] INFO - [2b093604-50a7-46fb-a67a-91bcc5cee649] ✅ Excel generated in 8ms
+[2025-07-03T17:12:17.555Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: f7dc0a7225b41e5ae9fa3077fd971863
+[2025-07-03T17:12:21.252Z] INFO - [2b093604-50a7-46fb-a67a-91bcc5cee649] ✅ Email sent in 3697ms
+[2025-07-03T17:12:21.293Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: f7dc0a7225b41e5ae9fa3077fd971863
+[2025-07-03T17:12:21.293Z] INFO - [2b093604-50a7-46fb-a67a-91bcc5cee649] ✅ Report sent. Total time: 3957ms | Trace ID: f7dc0a7225b41e5ae9fa3077fd971863
+[2025-07-03T17:12:21.335Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: f7dc0a7225b41e5ae9fa3077fd971863
+[2025-07-03T17:28:13.472Z] INFO - [cf749f1b-e666-4b9d-985c-6a742af8abda] ▶️ Starting /send-report with traceId: 5f218abffd5dcd8a92223e603d0db2a4
+[2025-07-03T17:28:13.640Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 5f218abffd5dcd8a92223e603d0db2a4
+[2025-07-03T17:28:13.647Z] INFO - [cf749f1b-e666-4b9d-985c-6a742af8abda] ✅ Excel generated in 7ms
+[2025-07-03T17:28:13.689Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 5f218abffd5dcd8a92223e603d0db2a4
+[2025-07-03T17:28:17.389Z] INFO - [cf749f1b-e666-4b9d-985c-6a742af8abda] ✅ Email sent in 3700ms
+[2025-07-03T17:28:17.431Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 5f218abffd5dcd8a92223e603d0db2a4
+[2025-07-03T17:28:17.431Z] INFO - [cf749f1b-e666-4b9d-985c-6a742af8abda] ✅ Report sent. Total time: 3959ms | Trace ID: 5f218abffd5dcd8a92223e603d0db2a4
+[2025-07-03T17:28:17.472Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 5f218abffd5dcd8a92223e603d0db2a4
+[2025-07-03T17:30:06.568Z] INFO - [34017053-abae-48c9-aa7d-88c9df3643e6] ▶️ Starting /send-report with traceId: 0320e95ada4d41323f52e7ccfc847233
+[2025-07-03T17:30:06.835Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 0320e95ada4d41323f52e7ccfc847233
+[2025-07-03T17:30:06.842Z] INFO - [34017053-abae-48c9-aa7d-88c9df3643e6] ✅ Excel generated in 7ms
+[2025-07-03T17:30:06.880Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 0320e95ada4d41323f52e7ccfc847233
+[2025-07-03T17:30:10.799Z] INFO - [34017053-abae-48c9-aa7d-88c9df3643e6] ✅ Email sent in 3919ms
+[2025-07-03T17:30:10.838Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 0320e95ada4d41323f52e7ccfc847233
+[2025-07-03T17:30:10.839Z] INFO - [34017053-abae-48c9-aa7d-88c9df3643e6] ✅ Report sent. Total time: 4271ms | Trace ID: 0320e95ada4d41323f52e7ccfc847233
+[2025-07-03T17:30:10.876Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 0320e95ada4d41323f52e7ccfc847233
+[2025-07-03T17:35:39.155Z] INFO - [0bc23868-8af3-4c7a-a973-dae8a1870683] ▶️ Starting /send-report with traceId: d571e7984884283d94a08c12c47c4030
+[2025-07-03T17:35:39.316Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d571e7984884283d94a08c12c47c4030
+[2025-07-03T17:35:39.324Z] INFO - [0bc23868-8af3-4c7a-a973-dae8a1870683] ✅ Excel generated in 7ms
+[2025-07-03T17:35:39.363Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d571e7984884283d94a08c12c47c4030
+[2025-07-03T17:35:43.142Z] INFO - [0bc23868-8af3-4c7a-a973-dae8a1870683] ✅ Email sent in 3778ms
+[2025-07-03T17:35:43.180Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d571e7984884283d94a08c12c47c4030
+[2025-07-03T17:35:43.181Z] INFO - [0bc23868-8af3-4c7a-a973-dae8a1870683] ✅ Report sent. Total time: 4026ms | Trace ID: d571e7984884283d94a08c12c47c4030
+[2025-07-03T17:35:43.219Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d571e7984884283d94a08c12c47c4030
+[2025-07-03T17:40:12.097Z] INFO - [f9804bdc-2202-4ab2-a31e-81c3952b3326] ▶️ Starting /send-report with traceId: 20a02c190e4aa445b4e44b34fd46e88f
+[2025-07-03T17:40:12.254Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 20a02c190e4aa445b4e44b34fd46e88f
+[2025-07-03T17:40:12.262Z] INFO - [f9804bdc-2202-4ab2-a31e-81c3952b3326] ✅ Excel generated in 7ms
+[2025-07-03T17:40:12.301Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 20a02c190e4aa445b4e44b34fd46e88f
+[2025-07-03T17:40:16.341Z] INFO - [f9804bdc-2202-4ab2-a31e-81c3952b3326] ✅ Email sent in 4040ms
+[2025-07-03T17:40:16.380Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 20a02c190e4aa445b4e44b34fd46e88f
+[2025-07-03T17:40:16.380Z] INFO - [f9804bdc-2202-4ab2-a31e-81c3952b3326] ✅ Report sent. Total time: 4284ms | Trace ID: 20a02c190e4aa445b4e44b34fd46e88f
+[2025-07-03T17:40:16.420Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 20a02c190e4aa445b4e44b34fd46e88f
+[2025-07-03T17:42:18.762Z] INFO - [b799780e-1360-408d-9073-4dabcb1ae783] ▶️ Starting /send-report with traceId: 85dbcd0129918676d21088fcc5dcc67c
+[2025-07-03T17:42:18.927Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 85dbcd0129918676d21088fcc5dcc67c
+[2025-07-03T17:42:18.934Z] INFO - [b799780e-1360-408d-9073-4dabcb1ae783] ✅ Excel generated in 7ms
+[2025-07-03T17:42:18.976Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 85dbcd0129918676d21088fcc5dcc67c
+[2025-07-03T17:42:22.688Z] INFO - [b799780e-1360-408d-9073-4dabcb1ae783] ✅ Email sent in 3712ms
+[2025-07-03T17:42:22.731Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 85dbcd0129918676d21088fcc5dcc67c
+[2025-07-03T17:42:22.731Z] INFO - [b799780e-1360-408d-9073-4dabcb1ae783] ✅ Report sent. Total time: 3969ms | Trace ID: 85dbcd0129918676d21088fcc5dcc67c
+[2025-07-03T17:42:22.772Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 85dbcd0129918676d21088fcc5dcc67c
+[2025-07-03T17:47:05.986Z] INFO - [069d09a7-3286-42fe-9673-bcc4098abc5f] ▶️ Starting /send-report with traceId: a15c8920185bd7db75fe2f99ccc1f942
+[2025-07-03T17:47:06.146Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a15c8920185bd7db75fe2f99ccc1f942
+[2025-07-03T17:47:06.154Z] INFO - [069d09a7-3286-42fe-9673-bcc4098abc5f] ✅ Excel generated in 7ms
+[2025-07-03T17:47:06.193Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a15c8920185bd7db75fe2f99ccc1f942
+[2025-07-03T17:47:09.916Z] INFO - [069d09a7-3286-42fe-9673-bcc4098abc5f] ✅ Email sent in 3723ms
+[2025-07-03T17:47:09.955Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a15c8920185bd7db75fe2f99ccc1f942
+[2025-07-03T17:47:09.956Z] INFO - [069d09a7-3286-42fe-9673-bcc4098abc5f] ✅ Report sent. Total time: 3970ms | Trace ID: a15c8920185bd7db75fe2f99ccc1f942
+[2025-07-03T17:47:09.995Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a15c8920185bd7db75fe2f99ccc1f942
+[2025-07-03T17:53:32.813Z] INFO - [14db1b25-f6bc-4862-b1c0-410982df091a] ▶️ Starting /send-report with traceId: 15f8525cf2845e45c6efc04321e6562b
+[2025-07-03T17:53:32.960Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 15f8525cf2845e45c6efc04321e6562b
+[2025-07-03T17:53:32.968Z] INFO - [14db1b25-f6bc-4862-b1c0-410982df091a] ✅ Excel generated in 7ms
+[2025-07-03T17:53:33.009Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 15f8525cf2845e45c6efc04321e6562b
+[2025-07-03T17:53:36.759Z] INFO - [14db1b25-f6bc-4862-b1c0-410982df091a] ✅ Email sent in 3749ms
+[2025-07-03T17:53:36.801Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 15f8525cf2845e45c6efc04321e6562b
+[2025-07-03T17:53:36.802Z] INFO - [14db1b25-f6bc-4862-b1c0-410982df091a] ✅ Report sent. Total time: 3989ms | Trace ID: 15f8525cf2845e45c6efc04321e6562b
+[2025-07-03T17:53:36.842Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 15f8525cf2845e45c6efc04321e6562b
+[2025-07-03T18:19:33.773Z] INFO - [2b95daa4-5105-4119-9bbf-0fcafd9da67b] ▶️ Starting /send-report with traceId: d3203aba42d09c67b441fe4bd199164e
+[2025-07-03T18:19:33.944Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d3203aba42d09c67b441fe4bd199164e
+[2025-07-03T18:19:33.956Z] INFO - [2b95daa4-5105-4119-9bbf-0fcafd9da67b] ✅ Excel generated in 11ms
+[2025-07-03T18:19:33.998Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d3203aba42d09c67b441fe4bd199164e
+[2025-07-03T18:19:37.779Z] INFO - [2b95daa4-5105-4119-9bbf-0fcafd9da67b] ✅ Email sent in 3781ms
+[2025-07-03T18:19:37.819Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d3203aba42d09c67b441fe4bd199164e
+[2025-07-03T18:19:37.819Z] INFO - [2b95daa4-5105-4119-9bbf-0fcafd9da67b] ✅ Report sent. Total time: 4046ms | Trace ID: d3203aba42d09c67b441fe4bd199164e
+[2025-07-03T18:19:37.857Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: d3203aba42d09c67b441fe4bd199164e
+[2025-07-03T18:20:28.321Z] INFO - [a7024059-cc93-42dd-af84-2525b362347f] ▶️ Starting /send-report with traceId: b93e4ba3bbfb5d490c38921d8b458c79
+[2025-07-03T18:20:28.478Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: b93e4ba3bbfb5d490c38921d8b458c79
+[2025-07-03T18:20:28.486Z] INFO - [a7024059-cc93-42dd-af84-2525b362347f] ✅ Excel generated in 7ms
+[2025-07-03T18:20:28.525Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: b93e4ba3bbfb5d490c38921d8b458c79
+[2025-07-03T18:20:32.001Z] INFO - [a7024059-cc93-42dd-af84-2525b362347f] ✅ Email sent in 3476ms
+[2025-07-03T18:20:32.039Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: b93e4ba3bbfb5d490c38921d8b458c79
+[2025-07-03T18:20:32.039Z] INFO - [a7024059-cc93-42dd-af84-2525b362347f] ✅ Report sent. Total time: 3718ms | Trace ID: b93e4ba3bbfb5d490c38921d8b458c79
+[2025-07-03T18:20:32.077Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: b93e4ba3bbfb5d490c38921d8b458c79
+[2025-07-03T18:23:05.062Z] INFO - [caeaaa74-16e9-4172-aac7-190934c126ad] ▶️ Starting /send-report with traceId: 1d2f023bb100a57a2fd703077a6751c9
+[2025-07-03T18:23:05.223Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1d2f023bb100a57a2fd703077a6751c9
+[2025-07-03T18:23:05.231Z] INFO - [caeaaa74-16e9-4172-aac7-190934c126ad] ✅ Excel generated in 7ms
+[2025-07-03T18:23:05.270Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1d2f023bb100a57a2fd703077a6751c9
+[2025-07-03T18:23:09.066Z] INFO - [caeaaa74-16e9-4172-aac7-190934c126ad] ✅ Email sent in 3796ms
+[2025-07-03T18:23:09.106Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1d2f023bb100a57a2fd703077a6751c9
+[2025-07-03T18:23:09.106Z] INFO - [caeaaa74-16e9-4172-aac7-190934c126ad] ✅ Report sent. Total time: 4045ms | Trace ID: 1d2f023bb100a57a2fd703077a6751c9
+[2025-07-03T18:23:09.144Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1d2f023bb100a57a2fd703077a6751c9
+[2025-07-03T18:42:55.172Z] INFO - [1addc6d8-9bdc-47be-b693-3353441ee2ed] ✅ Excel generated in 7 ms
+[2025-07-03T18:42:55.336Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1addc6d8-9bdc-47be-b693-3353441ee2ed
+[2025-07-03T18:42:59.078Z] INFO - [1addc6d8-9bdc-47be-b693-3353441ee2ed] ✅ Email sent in 3742 ms
+[2025-07-03T18:42:59.134Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1addc6d8-9bdc-47be-b693-3353441ee2ed
+[2025-07-03T18:42:59.134Z] INFO - [1addc6d8-9bdc-47be-b693-3353441ee2ed] ✅ Completed in 3969 ms
+[2025-07-03T18:42:59.173Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 1addc6d8-9bdc-47be-b693-3353441ee2ed
+[2025-07-03T18:45:54.622Z] INFO - [8dac7ca7-b56f-4113-b2dc-2a60e7e44676] ✅ Excel generated in 7 ms
+[2025-07-03T18:45:54.780Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 8dac7ca7-b56f-4113-b2dc-2a60e7e44676
+[2025-07-03T18:45:58.549Z] INFO - [8dac7ca7-b56f-4113-b2dc-2a60e7e44676] ✅ Email sent in 3769 ms
+[2025-07-03T18:45:58.590Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 8dac7ca7-b56f-4113-b2dc-2a60e7e44676
+[2025-07-03T18:45:58.590Z] INFO - [8dac7ca7-b56f-4113-b2dc-2a60e7e44676] ✅ Completed in 3975 ms
+[2025-07-03T18:45:58.628Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 8dac7ca7-b56f-4113-b2dc-2a60e7e44676
+[2025-07-03T18:52:26.932Z] INFO - [9ff002c7b19c66ca0005dc5c2e21b53f] ✅ Excel generated in 7 ms
+[2025-07-03T18:52:27.095Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 9ff002c7b19c66ca0005dc5c2e21b53f
+[2025-07-03T18:52:30.694Z] INFO - [9ff002c7b19c66ca0005dc5c2e21b53f] ✅ Email sent in 3599 ms
+[2025-07-03T18:52:30.734Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 9ff002c7b19c66ca0005dc5c2e21b53f
+[2025-07-03T18:52:30.735Z] INFO - [9ff002c7b19c66ca0005dc5c2e21b53f] ✅ Request completed in 3810 ms
+[2025-07-03T18:52:30.773Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: 9ff002c7b19c66ca0005dc5c2e21b53f
+[2025-07-03T19:03:45.808Z] INFO - [ca06b7494bfddb05833b9c059d29e0ab] ✅ Excel generated in 7 ms
+[2025-07-03T19:03:45.808Z] ERROR - [Dynatrace] ❌ Exception during log ingestion | traceId: ca06b7494bfddb05833b9c059d29e0ab | spanId is not defined
+[2025-07-03T19:03:49.494Z] INFO - [ca06b7494bfddb05833b9c059d29e0ab] ✅ Email sent in 3686 ms
+[2025-07-03T19:03:49.494Z] ERROR - [Dynatrace] ❌ Exception during log ingestion | traceId: ca06b7494bfddb05833b9c059d29e0ab | spanId is not defined
+[2025-07-03T19:03:49.495Z] INFO - [ca06b7494bfddb05833b9c059d29e0ab] ✅ Request completed in 3694 ms
+[2025-07-03T19:03:49.495Z] ERROR - [Dynatrace] ❌ Exception during log ingestion | traceId: ca06b7494bfddb05833b9c059d29e0ab | spanId is not defined
+[2025-07-03T19:07:48.247Z] INFO - [b5acd59d6ace267ae0c5c07f6d0695ce] ✅ Excel generated in 7 ms
+[2025-07-03T19:07:48.247Z] ERROR - [b5acd59d6ace267ae0c5c07f6d0695ce] ❌ Error: traceId is not defined
+[2025-07-03T19:08:56.796Z] INFO - [a7df0dfedd73986147b27a7a9add0c00] ✅ Excel generated in 6 ms
+[2025-07-03T19:08:56.958Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a7df0dfedd73986147b27a7a9add0c00
+[2025-07-03T19:09:01.386Z] INFO - [a7df0dfedd73986147b27a7a9add0c00] ✅ Email sent in 4427 ms
+[2025-07-03T19:09:01.426Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a7df0dfedd73986147b27a7a9add0c00
+[2025-07-03T19:09:01.427Z] INFO - [a7df0dfedd73986147b27a7a9add0c00] ✅ Request completed in 4637 ms
+[2025-07-03T19:09:01.465Z] INFO - [Dynatrace] ✅ Log sent successfully | traceId: a7df0dfedd73986147b27a7a9add0c00
+[2025-07-03T19:30:21.169Z] INFO - [8bf4d4283763894e72af699cb8a871fa] ✅ Excel generated in 10 ms
+[2025-07-03T19:30:25.335Z] INFO - [8bf4d4283763894e72af699cb8a871fa] ✅ Email sent in 4166 ms
+[2025-07-03T19:30:25.335Z] INFO - [8bf4d4283763894e72af699cb8a871fa] ✅ Request completed in 4176 ms
+[2025-07-03T19:30:25.512Z] INFO - [Dynatrace] ✅ Batched log sent | traceId: 8bf4d4283763894e72af699cb8a871fa

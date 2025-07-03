@@ -1,5 +1,8 @@
+// emailSender.js
 import nodemailer from 'nodemailer';
-import logger from './logger.js';
+import logger, {
+  logToDynatrace
+} from './logger.js';
 
 export async function sendEmailWithAttachment(filePath, recipients, subject, fromName, requestId) {
   try {
@@ -17,7 +20,8 @@ export async function sendEmailWithAttachment(filePath, recipients, subject, fro
       from: `"${fromName}" <${process.env.EMAIL_FROM}>`,
       to: recipients.join(','),
       subject,
-      html: `<table style="width: 100%; font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+      html: `
+        <table style="width: 100%; font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
   <tr>
     <td align="center">
       <table style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
@@ -42,18 +46,19 @@ export async function sendEmailWithAttachment(filePath, recipients, subject, fro
       </table>
     </td>
   </tr>
-</table>`,
-      attachments: [
-        {
-          filename: 'dynatrace-report.xlsx',
-          path: filePath,
-        },
-      ],
+</table>
+      `,
+      attachments: [{
+        filename: 'dynatrace-report.xlsx',
+        path: filePath,
+      }, ],
     };
 
     await transporter.sendMail(mailOptions);
   } catch (error) {
-    logger.error(`[${requestId}] ❌ Email send failed: ${error.stack || error}`);
+    const msg = `❌ Email send failed: ${error.stack || error}`;
+    logger.error(`[${requestId}] ${msg}`);
+    await logToDynatrace('error', msg, requestId);
     throw error;
   }
 }

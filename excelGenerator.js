@@ -1,5 +1,6 @@
+// excelGenerator.js
 import xlsx from 'xlsx';
-import logger from './logger.js';
+import logger, { logToDynatrace } from './logger.js';
 
 export async function generateExcel(data, filePath, requestId) {
   try {
@@ -8,7 +9,9 @@ export async function generateExcel(data, filePath, requestId) {
     xlsx.utils.book_append_sheet(workbook, worksheet, 'Report');
     xlsx.writeFile(workbook, filePath);
   } catch (error) {
-    logger.error(`[${requestId}] ❌ Excel generation failed: ${error.stack || error}`);
+    const msg = `❌ Excel generation failed: ${error.stack || error}`;
+    logger.error(`[${requestId}] ${msg}`);
+    await logToDynatrace('error', msg, requestId);
     throw error;
   }
 }

@@ -1,0 +1,44 @@
+{"level":"info","message":"✅ OpenTelemetry tracer initialized"}
+{"level":"info","message":"Traces export result: {\"code\":1,\"error\":{\"code\":415,\"name\":\"OTLPExporterError\",\"data\":\"\\u0012*Unsupported/Missing 'Content-Type' header.\"}}"}
+{"level":"info","message":"✅ OpenTelemetry tracer initialized"}
+[2025-07-03T17:28:06.125Z] INFO - ✅ OpenTelemetry tracer initialized
+[2025-07-03T17:28:18.667Z] INFO - 🟣 Traces export result: {"code":1,"error":{"code":415,"name":"OTLPExporterError","data":"\u0012*Unsupported/Missing 'Content-Type' header."}}
+[2025-07-03T17:30:02.312Z] INFO - ✅ OpenTelemetry tracer initialized
+[2025-07-03T17:30:11.757Z] INFO - 🟣 Traces export result: {"code":1,"error":{"code":415,"name":"OTLPExporterError","data":"\u0012*Unsupported/Missing 'Content-Type' header."}}
+[2025-07-03T17:35:31.496Z] INFO - ✅ OpenTelemetry tracer initialized
+[2025-07-03T17:35:44.400Z] INFO - 🟣 Traces export result: {"code":1,"error":{"code":8,"details":"Received message larger than max (168430140 vs 4194304)","metadata":{}}}
+{"level":"info","message":"✅ OpenTelemetry tracer initialized"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":1,\"error\":{\"code\":415,\"name\":\"OTLPExporterError\",\"data\":\"\\u0012*Unsupported/Missing 'Content-Type' header.\"}}"}
+{"level":"info","message":"✅ OpenTelemetry tracer initialized"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":1,\"error\":{\"code\":415,\"name\":\"OTLPExporterError\",\"data\":\"\\u0012*Unsupported/Missing 'Content-Type' header.\"}}"}
+{"level":"info","message":"✅ OpenTelemetry tracing initialized"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":1,\"error\":{\"code\":415,\"name\":\"OTLPExporterError\",\"data\":\"\\u0012*Unsupported/Missing 'Content-Type' header.\"}}"}
+{"level":"info","message":"✅ OpenTelemetry tracer initialized"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":1,\"error\":{\"code\":415,\"name\":\"OTLPExporterError\",\"data\":\"\\u0012*Unsupported/Missing 'Content-Type' header.\"}}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: [\"GET\"]"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: [\"GET\",\"GET\",\"GET\",\"GET\",\"GET\"]"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: [\"test-span\",\"GET\",\"test-span\",\"GET\"]"}
+{"level":"info","message":"🟣 Traces export result: [\"test-span\",\"GET\"]"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":1,\"errorCode\":415,\"message\":\"Unsupported Media Type\"}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"✅ OpenTelemetry tracer started"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
+{"level":"info","message":"🟣 Traces export result: {\"code\":0}"}
