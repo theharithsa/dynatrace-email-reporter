@@ -1,20 +1,23 @@
 import nodemailer from 'nodemailer';
-export async function sendEmailWithAttachment(filePath, recipients, subject, fromName) {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+import logger from './logger.js';
 
-  const mailOptions = {
-    from: `"${fromName}" <${process.env.EMAIL_FROM}>`,
-    to: recipients.join(','),
-    subject: subject,
-    html: `<table style="width: 100%; font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+export async function sendEmailWithAttachment(filePath, recipients, subject, fromName, requestId) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: `"${fromName}" <${process.env.EMAIL_FROM}>`,
+      to: recipients.join(','),
+      subject,
+      html: `<table style="width: 100%; font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
   <tr>
     <td align="center">
       <table style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
@@ -40,13 +43,17 @@ export async function sendEmailWithAttachment(filePath, recipients, subject, fro
     </td>
   </tr>
 </table>`,
-    attachments: [
-      {
-        filename: 'dynatrace-report.xlsx',
-        path: filePath,
-      },
-    ],
-  };
+      attachments: [
+        {
+          filename: 'dynatrace-report.xlsx',
+          path: filePath,
+        },
+      ],
+    };
 
-  await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    logger.error(`[${requestId}] ❌ Email send failed: ${error.stack || error}`);
+    throw error;
+  }
 }

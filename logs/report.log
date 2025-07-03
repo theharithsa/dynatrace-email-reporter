@@ -1,0 +1,12 @@
+[2025-07-03T15:55:53.490Z] INFO - [3bf6c5ed-5f39-4cc8-b17e-b9018cab4499] 📥 Received /send-report request
+[2025-07-03T15:55:53.498Z] INFO - [3bf6c5ed-5f39-4cc8-b17e-b9018cab4499] ✅ Excel generated in 7 ms
+[2025-07-03T15:55:57.616Z] INFO - [3bf6c5ed-5f39-4cc8-b17e-b9018cab4499] ✅ Email sent in 4118 ms
+[2025-07-03T15:55:57.616Z] INFO - [3bf6c5ed-5f39-4cc8-b17e-b9018cab4499] 🟢 Request completed in 4126 ms
+[2025-07-03T15:59:46.137Z] INFO - [19ae8697-3535-483e-a121-abc5579403f0] 📥 Received /send-report request
+[2025-07-03T15:59:46.142Z] INFO - [19ae8697-3535-483e-a121-abc5579403f0] ✅ Excel generated in 5 ms
+[2025-07-03T15:59:49.850Z] INFO - [19ae8697-3535-483e-a121-abc5579403f0] ✅ Email sent in 3708 ms
+[2025-07-03T15:59:49.850Z] INFO - [19ae8697-3535-483e-a121-abc5579403f0] 🟢 Request completed in 3713 ms
+[2025-07-03T16:01:10.105Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] 📥 Received /send-report request
+[2025-07-03T16:01:10.112Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] ✅ Excel generated in 6 ms
+[2025-07-03T16:01:14.201Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] ✅ Email sent in 4088 ms
+[2025-07-03T16:01:14.202Z] INFO - [6e3282ba-0017-4845-b315-6750492a7afc] 🟢 Request completed in 4097 ms
