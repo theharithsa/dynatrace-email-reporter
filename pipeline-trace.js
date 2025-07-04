@@ -94,7 +94,7 @@ async function main() {
   await sdk.start();
   const tracer = otel.trace.getTracer('pipeline-tracer');
 
-  // --- FIX: For Deploy, set root span time to match actual deploy ---
+  // For Deploy, set root span to deployStart; for Build, use script time
   const rootSpan = (job === 'Deploy' && deployStart)
     ? tracer.startSpan(job, { kind: otel.SpanKind.SERVER, startTime: deployStart })
     : tracer.startSpan(job, { kind: otel.SpanKind.SERVER });
@@ -181,8 +181,8 @@ async function main() {
               duration,
               status,
               error: '',
-              traceId: rootSpan.spanContext().traceId,
-              spanId: span.spanContext().spanId,
+              trace_id: rootSpan.spanContext().traceId,
+              span_id: span.spanContext().spanId,
               github: {
                 workflow: process.env.GITHUB_WORKFLOW,
                 run_id: process.env.GITHUB_RUN_ID,
@@ -220,8 +220,8 @@ async function main() {
         duration,
         status,
         error: errorMsg,
-        traceId: rootSpan.spanContext().traceId,
-        spanId: span ? span.spanContext().spanId : undefined,
+        trace_id: rootSpan.spanContext().traceId,
+        span_id: span ? span.spanContext().spanId : undefined,
         github: {
           workflow: process.env.GITHUB_WORKFLOW,
           run_id: process.env.GITHUB_RUN_ID,
@@ -233,7 +233,7 @@ async function main() {
     });
   }
 
-  // --- FIX: End root span for Deploy at deployEnd, else now ---
+  // End root span for Deploy at deployEnd, else now
   if (job === 'Deploy' && deployEnd) {
     rootSpan.end(deployEnd);
   } else {
