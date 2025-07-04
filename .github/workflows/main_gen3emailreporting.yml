@@ -1,4 +1,4 @@
-name: Build and Deploy Node.js App with Dynatrace Tracing (using trace_id output)
+name: Build and Deploy Node.js App with Dynatrace Tracing
 
 on:
   push:
@@ -9,7 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      trace_id: ${{ steps.start-trace.outputs.trace_id }}
+      trace_id: ${{ steps.set-trace.outputs.trace_id }}
+      parent_span_id: ${{ steps.set-trace.outputs.parent_span_id }}
 
     steps:
       - name: 🧾 Checkout Code
@@ -25,29 +26,31 @@ jobs:
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
       - name: 🚀 Start Build Trace
-        id: start-trace
+        id: set-trace
         run: |
-          TRACE_ID=$(node trace-cli.js start --step="Build Trace Start" | grep trace_id= | cut -d '=' -f2)
-          echo "trace_id=$TRACE_ID" >> $GITHUB_OUTPUT
+          TRACE_OUTPUT=$(node trace-cli.js start --step="Build Trace Start")
+          echo "$TRACE_OUTPUT"
+          echo "$TRACE_OUTPUT" | grep '^trace_id=' | sed 's/trace_id=//' | xargs -I{} echo "trace_id={}" >> $GITHUB_OUTPUT
+          echo "$TRACE_OUTPUT" | grep '^parent_span_id=' | sed 's/parent_span_id=//' | xargs -I{} echo "parent_span_id={}" >> $GITHUB_OUTPUT
 
       - name: 📦 Install App Dependencies
         run: |
-          node trace-cli.js start-child --step="Install Dependencies"
+          node trace-cli.js start-child --step="Install Dependencies" --trace-id=${{ steps.set-trace.outputs.trace_id }} --parent-span-id=${{ steps.set-trace.outputs.parent_span_id }}
           npm install
-          node trace-cli.js end-child --step="Install Dependencies"
+          node trace-cli.js end-child --step="Install Dependencies" --trace-id=${{ steps.set-trace.outputs.trace_id }}
 
       - name: 🧪 Build and Test
         run: |
-          node trace-cli.js start-child --step="Build and Test"
+          node trace-cli.js start-child --step="Build and Test" --trace-id=${{ steps.set-trace.outputs.trace_id }} --parent-span-id=${{ steps.set-trace.outputs.parent_span_id }}
           npm run build --if-present
           npm run test --if-present
-          node trace-cli.js end-child --step="Build and Test"
+          node trace-cli.js end-child --step="Build and Test" --trace-id=${{ steps.set-trace.outputs.trace_id }}
 
       - name: 🗜️ Zip Release
         run: |
-          node trace-cli.js start-child --step="Zip Artifact"
+          node trace-cli.js start-child --step="Zip Artifact" --trace-id=${{ steps.set-trace.outputs.trace_id }} --parent-span-id=${{ steps.set-trace.outputs.parent_span_id }}
           zip release.zip . -r -x "node_modules/*" -x ".git/*"
-          node trace-cli.js end-child --step="Zip Artifact"
+          node trace-cli.js end-child --step="Zip Artifact" --trace-id=${{ steps.set-trace.outputs.trace_id }}
 
       - name: ⬆️ Upload App Artifact
         uses: actions/upload-artifact@v4
@@ -56,13 +59,14 @@ jobs:
           path: release.zip
 
       - name: 🛑 End Build Trace
-        run: node trace-cli.js end --step="Build Trace End"
+        run: node trace-cli.js end --step="Build Trace End" --trace-id=${{ steps.set-trace.outputs.trace_id }}
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     env:
       TRACE_ID: ${{ needs.build.outputs.trace_id }}
+      PARENT_SPAN_ID: ${{ needs.build.outputs.parent_span_id }}
 
     steps:
       - name: 🧾 Checkout Code
@@ -82,21 +86,21 @@ jobs:
         with:
           name: node-app
 
-      - name: 🚀 Start Deploy Trace (reuse build trace)
+      - name: 🚀 Start Deploy Trace (reuse Build trace)
         run: node trace-cli.js start --step="Deploy Trace Start" --trace-id=$TRACE_ID
 
       - name: 📂 Unzip Artifact
         run: |
-          node trace-cli.js start-child --step="Unzip Artifact"
+          node trace-cli.js start-child --step="Unzip Artifact" --trace-id=$TRACE_ID --parent-span-id=$PARENT_SPAN_ID
           unzip -o release.zip
-          node trace-cli.js end-child --step="Unzip Artifact"
+          node trace-cli.js end-child --step="Unzip Artifact" --trace-id=$TRACE_ID
 
       - name: ☁️ Deploy to Azure
         run: |
-          node trace-cli.js start-child --step="Azure Deployment"
+          node trace-cli.js start-child --step="Azure Deployment" --trace-id=$TRACE_ID --parent-span-id=$PARENT_SPAN_ID
           echo "Deploying..."
           echo "Done"
-          node trace-cli.js end-child --step="Azure Deployment"
+          node trace-cli.js end-child --step="Azure Deployment" --trace-id=$TRACE_ID
 
       - name: 🛑 End Deploy Trace
-        run: node trace-cli.js end --step="Deploy Trace End"
+        run: node trace-cli.js end --step="Deploy Trace End" --trace-id=$TRACE_ID
