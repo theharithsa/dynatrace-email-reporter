@@ -14,7 +14,7 @@ const { trace, context, ROOT_CONTEXT, setSpanContext } = otelApi;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Logger setup
+// Logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -78,7 +78,7 @@ async function logToDynatrace(payload) {
   const tracer = trace.getTracer('github-ci-tracer');
 
   if (command === 'start') {
-    logger.info(`🔷 Starting root trace for ${step}`);
+    logger.info(`🔷 Starting root span for ${step}`);
     startTimer(step);
 
     const span = tracer.startSpan(step);
@@ -88,14 +88,15 @@ async function logToDynatrace(payload) {
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
 
-    // DO NOT end root span yet, hold until `end`
+    // Do NOT end the span now.
+    // You cannot persist the tracer or span object, so just output IDs.
+    await sdk.shutdown();
 
   } else if (command === 'start-child') {
     if (!traceIdArg || !parentSpanId) {
       logger.error('❌ Missing trace-id or parent-span-id');
       process.exit(1);
     }
-
     logger.info(`🟢 Starting child span: ${step}`);
     startTimer(step);
 
@@ -105,20 +106,22 @@ async function logToDynatrace(payload) {
       traceFlags: 1
     });
 
+    let childSpanId;
     context.with(parentCtx, () => {
       const span = tracer.startSpan(step);
-      const spanContext = span.spanContext();
+      childSpanId = span.spanContext().spanId;
       console.log(`trace_id=${traceIdArg}`);
-      console.log(`span_id=${spanContext.spanId}`);
-      // Save for ending later
+      console.log(`span_id=${childSpanId}`);
+      // Do NOT end; will end in end-child
     });
+
+    await sdk.shutdown();
 
   } else if (command === 'end-child') {
     if (!traceIdArg || !spanIdArg) {
       logger.error('❌ Missing trace-id or span-id');
       process.exit(1);
     }
-
     logger.info(`🔴 Ending child span: ${step}`);
     const duration = stopTimer(step);
 
@@ -147,13 +150,14 @@ async function logToDynatrace(payload) {
       status: 'completed'
     });
 
+    await sdk.shutdown();
+
   } else if (command === 'end') {
     if (!traceIdArg || !spanIdArg) {
       logger.error('❌ Missing trace-id or root span-id');
       process.exit(1);
     }
-
-    logger.info(`🛑 Ending root trace: ${step}`);
+    logger.info(`🛑 Ending root span: ${step}`);
 
     const ctx = setSpanContext(ROOT_CONTEXT, {
       traceId: traceIdArg,
@@ -178,7 +182,7 @@ async function logToDynatrace(payload) {
       step,
       status: 'root-end'
     });
-  }
 
-  await sdk.shutdown();
+    await sdk.shutdown();
+  }
 })();
