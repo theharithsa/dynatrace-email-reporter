@@ -13,7 +13,7 @@ jobs:
       contents: read
 
     steps:
-      - name: ⬇️ Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: ⚙️ Set Environment Variables
@@ -21,7 +21,10 @@ jobs:
           echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
-
+          
+      - name: ⬇️ Install OpenTelemetry CLI Dependencies
+        run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
+      
       - name: 📌 Start Full Trace
         run: node trace-cli.js start --step="Start CI/CD Trace"
 
