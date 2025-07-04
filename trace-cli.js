@@ -9,7 +9,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
-import fs from 'fs';
 
 const { trace, context, ROOT_CONTEXT } = otelApi;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -119,9 +118,10 @@ async function logToDynatrace(payload) {
     context.with(parentCtx, () => {
       span = tracer.startSpan(step);
       const spanContext = span.spanContext();
+
+      // Print for GitHub Actions
       console.log(`trace_id=${traceId}`);
       console.log(`span_id=${spanContext.spanId}`);
-      // DO NOT end here
     });
 
   } else if (command === 'end-child') {
