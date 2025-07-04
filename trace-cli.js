@@ -3,13 +3,16 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { trace, context, ROOT_CONTEXT, setSpanContext } from '@opentelemetry/api';
+import otelApi from '@opentelemetry/api'; // Fix for CommonJS module
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
 import fs from 'fs';
+
+const { trace, context, ROOT_CONTEXT } = otelApi;
+const setSpanContext = trace.setSpanContext;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -114,6 +117,8 @@ async function logToDynatrace(payload) {
 
     const spanContext = span.spanContext();
     saveContext(spanContext.traceId, spanContext.spanId);
+
+    // Print to stdout for GitHub Actions output parsing
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
 
