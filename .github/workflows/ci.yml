@@ -18,7 +18,7 @@ jobs:
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
-      - name: ⬇️ Install Trace CLI Dependencies
+      - name: ⬇️ Install Trace Dependencies
         run: |
           npm install @opentelemetry/sdk-node \
                       @opentelemetry/api \
@@ -49,7 +49,7 @@ jobs:
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
-      - name: ⬇️ Install Trace CLI Dependencies
+      - name: ⬇️ Install Trace Dependencies
         run: |
           npm install @opentelemetry/sdk-node \
                       @opentelemetry/api \
@@ -63,14 +63,21 @@ jobs:
         with:
           name: node-app
 
-      - name: 🏗️ Deploy Steps Before Azure (traced)
+      - name: 🔐 Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 🚀 Deploy and Trace All Steps
         run: node pipeline-trace.js Deploy
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'gen3emailreporting'
-          slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+      # The actual Azure deployment is done inside pipeline-trace.js for tracing
+      # If you want to run the deploy action separately and just trace the step, you can do:
+      # - name: 'Deploy to Azure Web App'
+      #   id: deploy-to-webapp
+      #   uses: azure/webapps-deploy@v3
+      #   with:
+      #     app-name: 'gen3emailreporting'
+      #     slot-name: 'Production'
+      #     package: .
+      #     publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
