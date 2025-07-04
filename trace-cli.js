@@ -24,6 +24,11 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()]
 });
 
+// Timer utils
+const timers = {};
+const startTimer = (label) => (timers[label] = Date.now());
+const stopTimer = (label) => Date.now() - (timers[label] || Date.now());
+
 // CLI args
 const args = process.argv.slice(2);
 const command = args[0];
@@ -31,12 +36,13 @@ const getArg = (key) => {
   const match = args.find((a) => a.startsWith(`--${key}=`));
   return match ? match.split('=')[1] : null;
 };
+
 const step = getArg('step') || 'Unnamed';
 const traceIdArg = getArg('trace-id');
 const parentSpanId = getArg('parent-span-id');
 const spanIdArg = getArg('span-id');
 
-// Dynatrace log ingest
+// Send logs to Dynatrace
 async function logToDynatrace(payload) {
   try {
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
@@ -59,6 +65,7 @@ async function logToDynatrace(payload) {
     url: process.env.DYNATRACE_OTLP_URL,
     headers: { Authorization: `Api-Token ${process.env.DYNATRACE_API_TOKEN}` }
   });
+
   const sdk = new NodeSDK({
     traceExporter: exporter,
     resource: new Resource({
@@ -66,95 +73,127 @@ async function logToDynatrace(payload) {
     })
   });
   await sdk.start();
+
   const tracer = trace.getTracer('github-ci-tracer');
 
   if (command === 'start') {
-    // Start root span, print trace and span ID, DO NOT END!
-    logger.info(`🔷 Root span: ${step}`);
-    const rootSpan = tracer.startSpan(step);
-    rootSpan.setAttribute('ci.job', step);
-    rootSpan.setAttribute('ci.type', 'root');
-    const rootContext = trace.setSpan(context.active(), rootSpan);
-    // Store root context in global for child calls (for one-liner CLI it's ephemeral)
-    global._ROOT_SPAN = rootSpan; // Not used across CLI runs; for mono-process only
+    logger.info(`🔷 Starting root span for ${step}`);
+    startTimer(step);
 
-    // Output for GitHub Actions
-    const spanContext = rootSpan.spanContext();
+    const span = tracer.startSpan(step);
+    span.setAttribute('ci.job', step);
+
+    const spanContext = span.spanContext();
+    // Print ONLY these lines for GitHub Actions output extraction!
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
 
-    // Instead of ending now, keep spanId for the end step!
+    // Do NOT end the span now.
     await sdk.shutdown();
 
   } else if (command === 'start-child') {
-    // Use parentSpan context for child
     if (!traceIdArg || !parentSpanId) {
       logger.error('❌ Missing trace-id or parent-span-id');
+      // Always print for YAML output
       console.log(`trace_id=${traceIdArg || ''}`);
       console.log(`span_id=`);
       process.exit(1);
     }
-    logger.info(`🟢 Child span: ${step}`);
+    logger.info(`🟢 Starting child span: ${step}`);
+    startTimer(step);
 
-    // Create a fake span context for parent
-    const parentSpanContext = {
-      traceId: traceIdArg,
-      spanId: parentSpanId,
-      traceFlags: 1
-    };
-    // Wrap parent context
-    const parentCtx = trace.setSpanContext(ROOT_CONTEXT, parentSpanContext);
+    let span, spanContext;
+    context.with(
+      trace.setSpanContext(ROOT_CONTEXT, {
+        traceId: traceIdArg,
+        spanId: parentSpanId,
+        traceFlags: 1
+      }),
+      () => {
+        span = tracer.startSpan(step);
+        spanContext = span.spanContext();
+        // Print ONLY for GitHub Actions
+        console.log(`trace_id=${spanContext.traceId}`);
+        console.log(`span_id=${spanContext.spanId}`);
+      }
+    );
 
-    let childSpan, childSpanContext;
-    context.with(parentCtx, () => {
-      childSpan = tracer.startSpan(step);
-      childSpan.setAttribute('ci.step', step);
-      childSpan.setAttribute('ci.type', 'child');
-      childSpanContext = childSpan.spanContext();
-      // Output for GitHub Actions
-      console.log(`trace_id=${childSpanContext.traceId}`);
-      console.log(`span_id=${childSpanContext.spanId}`);
-      childSpan.end();
-    });
+    await sdk.shutdown();
+
+  } else if (command === 'end-child') {
+    if (!traceIdArg || !spanIdArg) {
+      logger.error('❌ Missing trace-id or span-id');
+      console.log(`trace_id=${traceIdArg || ''}`);
+      console.log(`span_id=${spanIdArg || ''}`);
+      process.exit(1);
+    }
+    logger.info(`🔴 Ending child span: ${step}`);
+    const duration = stopTimer(step);
+
+    context.with(
+      trace.setSpanContext(ROOT_CONTEXT, {
+        traceId: traceIdArg,
+        spanId: spanIdArg,
+        traceFlags: 1
+      }),
+      () => {
+        const span = tracer.startSpan(`${step} - end`);
+        span.setAttribute('step.duration.ms', duration);
+        span.setAttribute('ci.step', step);
+        span.end();
+      }
+    );
+
+    // Only these lines for debug/output extraction
+    console.log(`trace_id=${traceIdArg}`);
+    console.log(`span_id=${spanIdArg}`);
 
     await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
       trace_id: traceIdArg,
-      span_id: childSpanContext?.spanId || '',
+      span_id: spanIdArg,
       service: 'github-ci-pipeline',
       message: `Step Completed: ${step}`,
       step,
+      step_duration_ms: duration,
       status: 'completed'
     });
 
     await sdk.shutdown();
 
   } else if (command === 'end') {
-    // End root span by creating a "span" with the same IDs (no true parent resume in OTel JS CLI style)
-    if (!traceIdArg || !parentSpanId) {
-      logger.error('❌ Missing trace-id or span-id for root span');
+    if (!traceIdArg || !spanIdArg) {
+      logger.error('❌ Missing trace-id or root span-id for root span');
+      console.log(`trace_id=${traceIdArg || ''}`);
+      console.log(`span_id=${spanIdArg || ''}`);
       process.exit(1);
     }
     logger.info(`🛑 Ending root span: ${step}`);
-    const parentSpanContext = {
-      traceId: traceIdArg,
-      spanId: parentSpanId,
-      traceFlags: 1
-    };
-    const parentCtx = trace.setSpanContext(ROOT_CONTEXT, parentSpanContext);
-    context.with(parentCtx, () => {
-      const fakeRoot = tracer.startSpan(`${step}-end`);
-      fakeRoot.setAttribute('ci.job', step);
-      fakeRoot.setAttribute('ci.type', 'root-end');
-      fakeRoot.end();
-    });
+
+    context.with(
+      trace.setSpanContext(ROOT_CONTEXT, {
+        traceId: traceIdArg,
+        spanId: spanIdArg,
+        traceFlags: 1
+      }),
+      () => {
+        const span = tracer.startSpan(`${step} - end`);
+        span.setAttribute('ci.trace.root', step);
+        span.setAttribute('ci.trace.end', true);
+        span.end();
+      }
+    );
+
+    // Print only for GitHub Actions (optional)
+    console.log(`trace_id=${traceIdArg}`);
+    console.log(`span_id=${spanIdArg}`);
 
     await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
       trace_id: traceIdArg,
-      span_id: parentSpanId,
+      span_id: spanIdArg,
       service: 'github-ci-pipeline',
       message: `Root Trace Ended: ${step}`,
       step,
