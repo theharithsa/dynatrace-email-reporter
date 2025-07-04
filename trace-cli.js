@@ -1,4 +1,5 @@
-// trace-cli.js
+// trace-cli.js (FINAL VERSION)
+
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
@@ -14,7 +15,6 @@ const { trace, context, ROOT_CONTEXT } = otelApi;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Logger setup
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -27,7 +27,6 @@ const logger = winston.createLogger({
   ]
 });
 
-// Time tracking
 const timers = {};
 function startTimer(label) { timers[label] = Date.now(); }
 function stopTimer(label) {
@@ -36,7 +35,6 @@ function stopTimer(label) {
   return ms;
 }
 
-// Parse args
 const args = process.argv.slice(2);
 const command = args[0];
 const getArg = (flag) => {
@@ -49,7 +47,6 @@ const traceId = getArg('trace-id');
 const parentSpanId = getArg('parent-span-id');
 const spanIdArg = getArg('span-id');
 
-// Dynatrace log ingestion
 async function logToDynatrace(payload) {
   try {
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
@@ -84,21 +81,25 @@ async function logToDynatrace(payload) {
 
   await sdk.start();
   const tracer = trace.getTracer('cli-tracer');
-  let span;
 
   if (command === 'start') {
     logger.info(`📍 Starting root trace: ${step}`);
     startTimer('step_duration');
-    span = tracer.startSpan(step);
+
+    const span = tracer.startSpan(step);
     span.setAttribute('ci.job', 'build-or-deploy');
     span.setAttribute('status', 'started');
-    const ctx = trace.setSpan(context.active(), span);
-    context.with(ctx, () => {});
+
     const spanContext = span.spanContext();
 
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
-    span.end();
+
+    // DO NOT end the span here. Store it via global tracer context.
+    const ctx = trace.setSpan(context.active(), span);
+    context.with(ctx, () => {});
+
+    // Persist span in memory for context (optional)
 
   } else if (command === 'start-child') {
     logger.info(`📍 Starting child span: ${step}`);
@@ -116,12 +117,12 @@ async function logToDynatrace(payload) {
     });
 
     context.with(parentCtx, () => {
-      span = tracer.startSpan(step);
+      const span = tracer.startSpan(step);
       const spanContext = span.spanContext();
 
-      // Print for GitHub Actions
       console.log(`trace_id=${traceId}`);
       console.log(`span_id=${spanContext.spanId}`);
+      // DO NOT end now; user will call `end-child`
     });
 
   } else if (command === 'end-child') {
@@ -163,24 +164,30 @@ async function logToDynatrace(payload) {
     await logToDynatrace(payload);
 
   } else if (command === 'end') {
-    logger.info(`📍 Ending trace: ${step}`);
-    const endSpan = tracer.startSpan(`${step} - trace-end`);
-    endSpan.setAttribute('ci.job', 'build-or-deploy');
-    endSpan.setAttribute('status', 'trace-end');
-    endSpan.end();
+    logger.info(`📍 Ending root span: ${step}`);
+    const rootCtx = trace.setSpanContext(ROOT_CONTEXT, {
+      traceId,
+      spanId: parentSpanId,
+      traceFlags: 1,
+    });
 
-    const payload = {
-      timestamp: Date.now(),
-      loglevel: 'INFO',
-      trace_id: traceId,
-      span_id: endSpan.spanContext().spanId,
-      service: 'github-ci-pipeline',
-      message: `Trace ended: ${step}`,
-      step,
-      status: 'trace-end',
-    };
+    context.with(rootCtx, () => {
+      const endSpan = tracer.startSpan(`${step} - trace-end`);
+      endSpan.setAttribute('ci.job', 'build-or-deploy');
+      endSpan.setAttribute('status', 'trace-end');
+      endSpan.end();
 
-    await logToDynatrace(payload);
+      logToDynatrace({
+        timestamp: Date.now(),
+        loglevel: 'INFO',
+        trace_id: traceId,
+        span_id: parentSpanId,
+        service: 'github-ci-pipeline',
+        message: `Trace ended: ${step}`,
+        step,
+        status: 'trace-end',
+      });
+    });
   }
 
   await sdk.shutdown();
