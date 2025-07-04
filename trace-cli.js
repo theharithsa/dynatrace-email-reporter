@@ -1,4 +1,3 @@
-// trace-cli.js
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
@@ -7,9 +6,10 @@ import { trace } from '@opentelemetry/api';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import path from 'path';
-import fs from 'fs';
+import { fileURLToPath } from 'url';
 import winston from 'winston';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 // Create logger for writing local logs to logs/pipeline.log
