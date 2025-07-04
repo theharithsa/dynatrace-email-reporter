@@ -120,9 +120,14 @@ async function main() {
         run: async () => execSync('npm install', { stdio: 'inherit' }),
       },
       {
-        name: 'Build and Test',
+        name: 'Build App',
         run: async () => {
           try { execSync('npm run build --if-present', { stdio: 'inherit' }); } catch (e) {}
+        },
+      },
+      {
+        name: 'Test App',
+        run: async () => {
           try { execSync('npm run test --if-present', { stdio: 'inherit' }); } catch (e) {}
         },
       },

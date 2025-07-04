@@ -12,20 +12,20 @@ jobs:
       DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
       DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
       DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
-      AZURE_WEBAPP_NAME: gen3emailreporting
+      AZURE_WEBAPP_NAME: gen3emailreportingtool
       AZURE_WEBAPP_SLOT: Production
-      AZURE_RESOURCE_GROUP: gen3emailreporting_group
 
     steps:
       - name: 🧾 Checkout Code
         uses: actions/checkout@v4
 
-      - name: ⬇️ Install All Dependencies (including OpenTelemetry)
-        run: |
-          npm ci
-          npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/exporter-trace-otlp-proto @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/sdk-logs @opentelemetry/exporter-logs-otlp-proto
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22.x'
 
-      - name: 🏗️ Build and Trace All Steps (logs + traces)
+      # Run all build steps INSIDE the tracing script!
+      - name: 📊 Trace & Log Build (OTel)
         run: node pipeline-trace.js Build
         env:
           DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
@@ -34,10 +34,10 @@ jobs:
           AZURE_WEBAPP_NAME: ${{ env.AZURE_WEBAPP_NAME }}
           GITHUB_SHA: ${{ github.sha }}
 
-      - name: 🗜️ Zip Release
+      - name: Zip artifact for deployment
         run: zip release.zip . -r -x "node_modules/*" -x ".git/*"
 
-      - name: ⬆️ Upload Artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
@@ -50,23 +50,25 @@ jobs:
       DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
       DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
       DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
-      AZURE_WEBAPP_NAME: gen3emailreporting
+      AZURE_WEBAPP_NAME: gen3emailreportingtool
       AZURE_WEBAPP_SLOT: Production
-      AZURE_RESOURCE_GROUP: gen3emailreporting_group
 
     steps:
-      - name: 🧾 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 📥 Download Artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
 
-      - name: 🗃️ Unzip Artifact
-        run: unzip -o release.zip
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22.x'
 
       - name: 📅 Mark Deploy Start Time
+        id: mark_deploy_start
         run: echo "DEPLOY_START=$(date +%s)" >> $GITHUB_ENV
 
       - name: 'Deploy to Azure Web App'
@@ -79,12 +81,11 @@ jobs:
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8ADA6D1EFEEB460CB353C632222387BF }}
 
       - name: 📅 Mark Deploy End Time
+        id: mark_deploy_end
         run: echo "DEPLOY_END=$(date +%s)" >> $GITHUB_ENV
 
-      - name: 📊 Trace & Log Deploy (including duration)
-        run: |
-          npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/exporter-trace-otlp-proto @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/sdk-logs @opentelemetry/exporter-logs-otlp-proto
-          node pipeline-trace.js Deploy
+      - name: 📊 Trace & Log Deploy (OTel)
+        run: node pipeline-trace.js Deploy
         env:
           DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
           DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
