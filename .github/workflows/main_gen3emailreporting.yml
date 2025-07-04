@@ -24,6 +24,9 @@ jobs:
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
+      - name: 🧬 Generate Shared Trace ID
+        run: echo "TRACE_ID=$(uuidgen | tr 'A-Z' 'a-z' | tr -d '-')" >> $GITHUB_ENV
+
       - name: ⬇️ Install CLI Dependencies
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
@@ -74,6 +77,9 @@ jobs:
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
+      - name: 🧬 Generate Shared Trace ID
+        run: echo "TRACE_ID=$(uuidgen | tr 'A-Z' 'a-z' | tr -d '-')" >> $GITHUB_ENV
+
       - name: ⬇️ Install CLI Dependencies
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
@@ -95,7 +101,7 @@ jobs:
         run: |
           node trace-cli.js start --step="Azure Deployment"
           echo "Deploying to Azure Web App..."
-          # Replace this with actual deploy step if needed
+          # Actual deployment logic can go here
           echo "Deployment done"
           node trace-cli.js end --step="Azure Deployment"
 
