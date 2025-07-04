@@ -1,0 +1,67 @@
+name: Build and deploy Node.js app with OpenTelemetry tracing
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set Secrets as Env Variables
+        run: |
+          echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
+          echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
+          echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
+
+      - name: ⬇️ Install Trace CLI Dependencies
+        run: |
+          npm install @opentelemetry/sdk-node \
+                      @opentelemetry/api \
+                      @opentelemetry/resources \
+                      @opentelemetry/semantic-conventions \
+                      @opentelemetry/exporter-trace-otlp-proto \
+                      dotenv
+
+      - name: 🏗️ Build and Trace All Steps
+        run: node pipeline-trace.js Build
+
+      - name: ⬆️ Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app
+          path: release.zip
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set Secrets as Env Variables
+        run: |
+          echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
+          echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
+          echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
+
+      - name: ⬇️ Install Trace CLI Dependencies
+        run: |
+          npm install @opentelemetry/sdk-node \
+                      @opentelemetry/api \
+                      @opentelemetry/resources \
+                      @opentelemetry/semantic-conventions \
+                      @opentelemetry/exporter-trace-otlp-proto \
+                      dotenv
+
+      - name: 📥 Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: node-app
+
+      - name: 🚀 Deploy and Trace All Steps
+        run: node pipeline-trace.js Deploy
