@@ -36,7 +36,7 @@ jobs:
       - id: start_trace
         name: 🚀 Start Build Trace
         run: |
-          node trace-cli.js start --step=build | tee trace_output.txt
+          node trace-cli.js start --step="Build" | tee trace_output.txt
           cat trace_output.txt
           echo "trace_id=$(grep '^trace_id=' trace_output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
           echo "parent_span_id=$(grep '^parent_span_id=' trace_output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
@@ -49,11 +49,6 @@ jobs:
             --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} | tee output.txt
           cat output.txt
           echo "span_id=$(grep '^span_id=' output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
-
-      - name: 🐞 Debug Install Span ID
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Install Span ID: ${{ steps.install_start.outputs.span_id }}"
 
       - name: 📦 Install Dependencies (Execute)
         run: npm install
@@ -73,11 +68,6 @@ jobs:
           cat output.txt
           echo "span_id=$(grep '^span_id=' output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
 
-      - name: 🐞 Debug Build/Test Span ID
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Build/Test Span ID: ${{ steps.build_start.outputs.span_id }}"
-
       - name: 🧪 Build and Test (Execute)
         run: |
           npm run build --if-present
@@ -90,7 +80,7 @@ jobs:
             --span-id=${{ steps.build_start.outputs.span_id }}
 
       - id: zip_start
-        name: 🗜️ Zip Artifact (Start)
+        name: 🗜️ Zip Release (Start)
         run: |
           node trace-cli.js start-child --step="Zip Artifact" \
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
@@ -98,15 +88,10 @@ jobs:
           cat output.txt
           echo "span_id=$(grep '^span_id=' output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
 
-      - name: 🐞 Debug Zip Span ID
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Zip Span ID: ${{ steps.zip_start.outputs.span_id }}"
-
-      - name: 🗜️ Zip Artifact (Execute)
+      - name: 🗜️ Zip Release (Execute)
         run: zip release.zip . -r -x "node_modules/*" -x ".git/*"
 
-      - name: 🗜️ Zip Artifact (End)
+      - name: 🗜️ Zip Release (End)
         run: |
           node trace-cli.js end-child --step="Zip Artifact" \
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
@@ -118,14 +103,9 @@ jobs:
           name: node-app
           path: release.zip
 
-      - name: 🐞 Debug Root Span IDs
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Root Parent Span ID: ${{ steps.start_trace.outputs.parent_span_id }}"
-
       - name: 🛑 End Build Trace
         run: |
-          node trace-cli.js end --step=build \
+          node trace-cli.js end --step="Build" \
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
             --span-id=${{ steps.start_trace.outputs.parent_span_id }}
 
@@ -157,7 +137,7 @@ jobs:
       - id: start_trace
         name: 🚀 Start Deploy Trace
         run: |
-          node trace-cli.js start --step=deploy | tee trace_output.txt
+          node trace-cli.js start --step="Deploy" | tee trace_output.txt
           cat trace_output.txt
           echo "trace_id=$(grep '^trace_id=' trace_output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
           echo "parent_span_id=$(grep '^parent_span_id=' trace_output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
@@ -175,11 +155,6 @@ jobs:
             --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} | tee output.txt
           cat output.txt
           echo "span_id=$(grep '^span_id=' output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
-
-      - name: 🐞 Debug Unzip Span ID
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Unzip Span ID: ${{ steps.unzip_start.outputs.span_id }}"
 
       - name: 📂 Unzip Artifact (Execute)
         run: unzip -o release.zip
@@ -199,11 +174,6 @@ jobs:
           cat output.txt
           echo "span_id=$(grep '^span_id=' output.txt | head -1 | cut -d '=' -f2 | xargs)" >> $GITHUB_OUTPUT
 
-      - name: 🐞 Debug Deploy Span ID
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Deploy Span ID: ${{ steps.deploy_start.outputs.span_id }}"
-
       - name: 🚀 Deploy to Azure (Execute)
         run: |
           echo "Deploying to Azure..."
@@ -215,13 +185,8 @@ jobs:
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
             --span-id=${{ steps.deploy_start.outputs.span_id }}
 
-      - name: 🐞 Debug Root Span IDs
-        run: |
-          echo "Trace ID: ${{ steps.start_trace.outputs.trace_id }}"
-          echo "Root Parent Span ID: ${{ steps.start_trace.outputs.parent_span_id }}"
-
       - name: 🛑 End Deploy Trace
         run: |
-          node trace-cli.js end --step=deploy \
+          node trace-cli.js end --step="Deploy" \
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
             --span-id=${{ steps.start_trace.outputs.parent_span_id }}
