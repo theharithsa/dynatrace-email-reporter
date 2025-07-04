@@ -72,6 +72,9 @@ jobs:
         with:
           name: node-app
 
+      - name: ⬇️ Install OpenTelemetry CLI Dependencies
+        run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
+        
       - name: 📂 Unzip Artifact
         run: |
           node trace-cli.js start --step="Unzip Artifact"
