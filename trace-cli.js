@@ -29,7 +29,7 @@ const pipelineLogger = winston.createLogger({
 
 const executionLog = {
   timestamp: Date.now(),
-  level: 'INFO',
+  loglevel: 'INFO',
   trace_id: '',
   span_id: '',
   service: 'github-ci-pipeline',
