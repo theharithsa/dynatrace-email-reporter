@@ -3,7 +3,7 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import otelApi from '@opentelemetry/api'; // Fix for CommonJS module
+import otelApi from '@opentelemetry/api';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -22,14 +22,15 @@ const command = args[0];
 const stepArg = args.find(arg => arg.startsWith('--step='));
 const traceIdArg = args.find(arg => arg.startsWith('--trace-id='));
 const parentSpanIdArg = args.find(arg => arg.startsWith('--parent-span-id='));
+const endpointArg = args.find(arg => arg.startsWith('--endpoint='));
 
 const step = stepArg ? stepArg.split('=')[1] : 'Unnamed Step';
 const traceIdFromInput = traceIdArg ? traceIdArg.split('=')[1] : null;
 const parentSpanIdFromInput = parentSpanIdArg ? parentSpanIdArg.split('=')[1] : null;
+const endpointName = endpointArg ? endpointArg.split('=')[1] : step;
 
 const CONTEXT_FILE = path.join(__dirname, '.trace-context.json');
 
-// Logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -43,7 +44,6 @@ const logger = winston.createLogger({
   ]
 });
 
-// Timer utils
 const timers = {};
 function startTimer(label) {
   timers[label] = Date.now();
@@ -54,7 +54,6 @@ function stopTimer(label) {
   return ms;
 }
 
-// Context helpers
 function saveContext(traceId, parentSpanId) {
   fs.writeFileSync(CONTEXT_FILE, JSON.stringify({ traceId, parentSpanId }, null, 2));
 }
@@ -63,7 +62,6 @@ function loadContext() {
   return JSON.parse(fs.readFileSync(CONTEXT_FILE, 'utf-8'));
 }
 
-// Dynatrace log
 async function logToDynatrace(payload) {
   try {
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
@@ -103,7 +101,6 @@ async function logToDynatrace(payload) {
 
   await sdk.start();
   const tracer = trace.getTracer('cli-tracer');
-
   const contextData = loadContext();
   let span;
 
@@ -111,14 +108,13 @@ async function logToDynatrace(payload) {
     logger.info(`📍 Starting root trace: ${step}`);
     startTimer('step_duration');
 
-    span = tracer.startSpan(step);
+    span = tracer.startSpan(endpointName);
     span.setAttribute('ci.job', 'build-or-deploy');
     span.setAttribute('status', 'started');
+    span.setAttribute('endpoint', endpointName);
 
     const spanContext = span.spanContext();
     saveContext(spanContext.traceId, spanContext.spanId);
-
-    // Print to stdout for GitHub Actions output parsing
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
 
@@ -146,6 +142,7 @@ async function logToDynatrace(payload) {
       span = tracer.startSpan(step);
       span.setAttribute('ci.job', 'build-or-deploy');
       span.setAttribute('status', 'in-progress');
+      span.setAttribute('endpoint', endpointName);
 
       const spanContext = span.spanContext();
       saveContext(traceId, spanContext.spanId);
@@ -155,12 +152,12 @@ async function logToDynatrace(payload) {
   } else if (command === 'end-child') {
     logger.info(`📍 Ending child span: ${step}`);
     const duration = stopTimer('step_duration');
-
     const traceId = traceIdFromInput || contextData?.traceId;
 
     span = tracer.startSpan(`${step} - complete`);
     span.setAttribute('status', 'completed');
     span.setAttribute('ci.job', 'build-or-deploy');
+    span.setAttribute('endpoint', endpointName);
     span.end();
 
     const payload = {
@@ -180,12 +177,12 @@ async function logToDynatrace(payload) {
 
   } else if (command === 'end') {
     logger.info(`📍 Ending trace: ${step}`);
-
     const traceId = traceIdFromInput || contextData?.traceId;
 
     span = tracer.startSpan(`${step} - trace-end`);
     span.setAttribute('ci.job', 'build-or-deploy');
     span.setAttribute('status', 'trace-end');
+    span.setAttribute('endpoint', endpointName);
     span.end();
 
     const payload = {
