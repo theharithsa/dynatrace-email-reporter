@@ -69,13 +69,14 @@ jobs:
       - name: 📅 Mark Deploy Start Time
         run: echo "DEPLOY_START=$(date +%s)" >> $GITHUB_ENV
 
-      - name: 🚀 Deploy to Azure Web App
+      - name: 'Deploy to Azure Web App'
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+          app-name: 'gen3emailreportingtool'
+          slot-name: 'Production'
           package: .
-          slot-name: ${{ env.AZURE_WEBAPP_SLOT }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8ADA6D1EFEEB460CB353C632222387BF }}
 
       - name: 📅 Mark Deploy End Time
         run: echo "DEPLOY_END=$(date +%s)" >> $GITHUB_ENV
