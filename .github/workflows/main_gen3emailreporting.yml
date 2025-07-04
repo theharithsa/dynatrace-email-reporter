@@ -41,25 +41,32 @@ jobs:
           echo "trace_id=$(grep trace_id trace_output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
           echo "parent_span_id=$(grep parent_span_id trace_output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: 📦 Install App Dependencies (Start)
+      - id: install_start
+        name: 📦 Install Dependencies (Start)
         run: |
           node trace-cli.js start-child --step="Install Dependencies" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-               --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} > output.txt
+          cat output.txt
+          echo "span_id=$(grep span_id output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: 📦 Install App Dependencies (Execute)
+      - name: 📦 Install Dependencies (Execute)
         run: npm install
 
-      - name: 📦 Install App Dependencies (End)
+      - name: 📦 Install Dependencies (End)
         run: |
           node trace-cli.js end-child --step="Install Dependencies" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --span-id=${{ steps.install_start.outputs.span_id }}
 
-      - name: 🧪 Build and Test (Start)
+      - id: build_start
+        name: 🧪 Build and Test (Start)
         run: |
           node trace-cli.js start-child --step="Build and Test" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-               --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} > output.txt
+          cat output.txt
+          echo "span_id=$(grep span_id output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
 
       - name: 🧪 Build and Test (Execute)
         run: |
@@ -69,13 +76,17 @@ jobs:
       - name: 🧪 Build and Test (End)
         run: |
           node trace-cli.js end-child --step="Build and Test" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --span-id=${{ steps.build_start.outputs.span_id }}
 
-      - name: 🗜️ Zip Release (Start)
+      - id: zip_start
+        name: 🗜️ Zip Release (Start)
         run: |
           node trace-cli.js start-child --step="Zip Artifact" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-               --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} > output.txt
+          cat output.txt
+          echo "span_id=$(grep span_id output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
 
       - name: 🗜️ Zip Release (Execute)
         run: zip release.zip . -r -x "node_modules/*" -x ".git/*"
@@ -83,7 +94,8 @@ jobs:
       - name: 🗜️ Zip Release (End)
         run: |
           node trace-cli.js end-child --step="Zip Artifact" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --span-id=${{ steps.zip_start.outputs.span_id }}
 
       - name: ⬆️ Upload Artifact
         uses: actions/upload-artifact@v4
@@ -94,7 +106,7 @@ jobs:
       - name: 🛑 End Build Trace
         run: |
           node trace-cli.js end --step=Build \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -134,11 +146,14 @@ jobs:
         with:
           name: node-app
 
-      - name: 📂 Unzip Artifact (Start)
+      - id: unzip_start
+        name: 📂 Unzip Artifact (Start)
         run: |
           node trace-cli.js start-child --step="Unzip Artifact" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-               --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} > output.txt
+          cat output.txt
+          echo "span_id=$(grep span_id output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
 
       - name: 📂 Unzip Artifact (Execute)
         run: unzip -o release.zip
@@ -146,13 +161,17 @@ jobs:
       - name: 📂 Unzip Artifact (End)
         run: |
           node trace-cli.js end-child --step="Unzip Artifact" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --span-id=${{ steps.unzip_start.outputs.span_id }}
 
-      - name: 🚀 Deploy to Azure (Start)
+      - id: deploy_start
+        name: 🚀 Deploy to Azure (Start)
         run: |
           node trace-cli.js start-child --step="Azure Deployment" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-               --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }} > output.txt
+          cat output.txt
+          echo "span_id=$(grep span_id output.txt | cut -d '=' -f2)" >> $GITHUB_OUTPUT
 
       - name: 🚀 Deploy to Azure (Execute)
         run: |
@@ -162,9 +181,10 @@ jobs:
       - name: 🚀 Deploy to Azure (End)
         run: |
           node trace-cli.js end-child --step="Azure Deployment" \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }} \
+            --span-id=${{ steps.deploy_start.outputs.span_id }}
 
       - name: 🛑 End Deploy Trace
         run: |
           node trace-cli.js end --step=Deploy \
-               --trace-id=${{ steps.start_trace.outputs.trace_id }}
+            --trace-id=${{ steps.start_trace.outputs.trace_id }}
