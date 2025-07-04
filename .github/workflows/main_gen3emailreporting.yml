@@ -1,4 +1,4 @@
-name: Build and Deploy Node.js App
+name: Build and Deploy Node.js App with Tracing
 
 on:
   push:
@@ -10,53 +10,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set Environment
+      - name: ⚙️ Set Secrets as Env Variables
         run: |
           echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
-      - name: Install Dependencies
-        run: npm install
+      - name: ⬇️ Install Trace CLI Dependencies
+        run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
-      - name: Start Build Trace
+      - name: 🚀 Start Build Trace
         run: node trace-cli.js start --step="Build Trace Start"
 
-      - name: Save Trace Context
+      - name: 📦 Install App Dependencies
+        run: |
+          node trace-cli.js start-child --step="Install Dependencies"
+          npm install
+          node trace-cli.js end-child --step="Install Dependencies"
+
+      - name: 🧪 Build and Test
+        run: |
+          node trace-cli.js start-child --step="Build and Test"
+          npm run build --if-present
+          npm run test --if-present
+          node trace-cli.js end-child --step="Build and Test"
+
+      - name: 🗜️ Zip Release
+        run: |
+          node trace-cli.js start-child --step="Zip Artifact"
+          zip release.zip . -r -x "node_modules/*" -x ".git/*"
+          node trace-cli.js end-child --step="Zip Artifact"
+
+      - name: ⬆️ Upload App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app
+          path: release.zip
+
+      - name: 🛡️ Upload Trace Context
         uses: actions/upload-artifact@v4
         with:
           name: trace-context
           path: .trace-context.json
 
-      - name: Install App Dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: trace-context
-
-      - run: |
-          node trace-cli.js start-child --step="Install Dependencies"
-          npm install
-          node trace-cli.js end-child --step="Install Dependencies"
-
-      - run: |
-          node trace-cli.js start-child --step="Build & Test"
-          npm run build --if-present
-          npm run test --if-present
-          node trace-cli.js end-child --step="Build & Test"
-
-      - run: |
-          node trace-cli.js start-child --step="Zip Artifact"
-          zip release.zip . -r -x "node_modules/*" -x ".git/*"
-          node trace-cli.js end-child --step="Zip Artifact"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: release.zip
-
-      - name: End Build Trace
+      - name: 🛑 End Build Trace
         run: node trace-cli.js end --step="Build Trace End"
 
   deploy:
@@ -64,43 +64,43 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set Environment
+      - name: ⚙️ Set Secrets as Env Variables
         run: |
           echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
-      - name: Install Dependencies
-        run: npm install
+      - name: ⬇️ Install Trace CLI Dependencies
+        run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
-      - name: Start Deploy Trace
-        run: node trace-cli.js start --step="Deploy Trace Start"
-
-      - name: Save Trace Context
-        uses: actions/upload-artifact@v4
-        with:
-          name: trace-context
-          path: .trace-context.json
-
-      - uses: actions/download-artifact@v4
+      - name: 📥 Download Trace Context
+        uses: actions/download-artifact@v4
         with:
           name: trace-context
 
-      - uses: actions/download-artifact@v4
+      - name: 📥 Download App Artifact
+        uses: actions/download-artifact@v4
         with:
           name: node-app
 
-      - run: |
+      - name: 🚀 Start Deploy Trace
+        run: node trace-cli.js start --step="Deploy Trace Start"
+
+      - name: 📂 Unzip Artifact
+        run: |
           node trace-cli.js start-child --step="Unzip Artifact"
           unzip -o release.zip
           node trace-cli.js end-child --step="Unzip Artifact"
 
-      - run: |
+      - name: ☁️ Deploy to Azure
+        run: |
           node trace-cli.js start-child --step="Azure Deployment"
           echo "Deploying..."
-          echo "Done"
+          echo "Done."
           node trace-cli.js end-child --step="Azure Deployment"
 
-      - run: node trace-cli.js end --step="Deploy Trace End"
+      - name: 🛑 End Deploy Trace
+        run: node trace-cli.js end --step="Deploy Trace End"
