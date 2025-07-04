@@ -17,7 +17,9 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const args = process.argv.slice(2);
 const command = args[0];
 const stepArg = args.find(arg => arg.startsWith('--step='));
+const traceIdArg = args.find(arg => arg.startsWith('--trace-id='));
 const step = stepArg ? stepArg.split('=')[1] : 'Unnamed Step';
+const traceIdFromInput = traceIdArg ? traceIdArg.split('=')[1] : null;
 
 const CONTEXT_FILE = path.join(__dirname, '.trace-context.json');
 
@@ -102,14 +104,30 @@ async function logToDynatrace(payload) {
   if (command === 'start') {
     logger.info(`📍 Starting root trace: ${step}`);
     startTimer('step_duration');
-    span = tracer.startSpan(step);
+
+    let spanOptions = {};
+    if (traceIdFromInput) {
+      logger.info(`🔁 Reusing incoming trace ID: ${traceIdFromInput}`);
+      spanOptions.links = [{
+        context: {
+          traceId: traceIdFromInput,
+          spanId: traceIdFromInput.slice(0, 16), // dummy span ID
+          traceFlags: 1
+        }
+      }];
+    }
+
+    span = tracer.startSpan(step, spanOptions);
     span.setAttribute('ci.job', 'build-or-deploy');
     span.setAttribute('status', 'started');
+
     const ctx = trace.setSpan(context.active(), span);
     context.with(ctx, () => { });
 
     const spanContext = span.spanContext();
+    console.log(`trace_id=${spanContext.traceId}`); // used in GitHub Actions
     saveContext(spanContext.traceId, spanContext.spanId);
+
     span.end();
 
   } else if (command === 'start-child') {
