@@ -1,3 +1,4 @@
+// pipeline-trace.js
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
@@ -68,6 +69,38 @@ async function sendExecutionLogsToDynatrace(logsArray, traceId) {
   }
 }
 
+async function fetchGitHubRunAndJobs() {
+  const runId = process.env.GITHUB_RUN_ID;
+  const repo = process.env.GITHUB_REPOSITORY;
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (!runId || !repo || !githubToken) {
+    logger.warn('Missing GitHub run ID, repository, or token for metrics enrichment');
+    return null;
+  }
+
+  const runUrl = `https://api.github.com/repos/${repo}/actions/runs/${runId}`;
+  const jobsUrl = `https://api.github.com/repos/${repo}/actions/runs/${runId}/jobs`;
+
+  try {
+    // Fetch Run Details
+    const runResp = await fetch(runUrl, {
+      headers: { Authorization: `Bearer ${githubToken}`, 'User-Agent': 'dt-pipeline-trace' }
+    });
+    const runDetails = await runResp.json();
+
+    // Fetch Jobs Details
+    const jobsResp = await fetch(jobsUrl, {
+      headers: { Authorization: `Bearer ${githubToken}`, 'User-Agent': 'dt-pipeline-trace' }
+    });
+    const jobsDetails = await jobsResp.json();
+
+    return { runDetails, jobsDetails };
+  } catch (err) {
+    logger.error(`[GitHub API] ❌ Failed to fetch workflow run/jobs: ${err.message}`);
+    return null;
+  }
+}
+
 async function main() {
   const job = process.argv[2] || 'Build';
 
@@ -117,17 +150,12 @@ async function main() {
     steps = [
       {
         name: 'Install Dependencies',
-        run: async () => execSync('npm install', { stdio: 'inherit' }),
+        run: async () => execSync('npm ci', { stdio: 'inherit' }),
       },
       {
-        name: 'Build App',
+        name: 'Build and Test',
         run: async () => {
           try { execSync('npm run build --if-present', { stdio: 'inherit' }); } catch (e) {}
-        },
-      },
-      {
-        name: 'Test App',
-        run: async () => {
           try { execSync('npm run test --if-present', { stdio: 'inherit' }); } catch (e) {}
         },
       },
@@ -238,6 +266,40 @@ async function main() {
     });
   }
 
+  // Add GitHub Actions workflow run/job/step metrics to logs
+  const ghData = await fetchGitHubRunAndJobs();
+  if (ghData) {
+    const { runDetails, jobsDetails } = ghData;
+    executionLogs.push({
+      type: 'github_actions_run_metrics',
+      workflow: runDetails.name,
+      workflow_run_id: runDetails.id,
+      status: runDetails.status,
+      conclusion: runDetails.conclusion,
+      actor: runDetails.actor && runDetails.actor.login,
+      event: runDetails.event,
+      run_started_at: runDetails.run_started_at,
+      run_completed_at: runDetails.updated_at,
+      duration_sec: (new Date(runDetails.updated_at) - new Date(runDetails.run_started_at)) / 1000,
+      jobs: jobsDetails.jobs && jobsDetails.jobs.map(job => ({
+        name: job.name,
+        status: job.status,
+        conclusion: job.conclusion,
+        started_at: job.started_at,
+        completed_at: job.completed_at,
+        duration_sec: (new Date(job.completed_at) - new Date(job.started_at)) / 1000,
+        steps: job.steps && job.steps.map(step => ({
+          name: step.name,
+          status: step.status,
+          conclusion: step.conclusion,
+          started_at: step.started_at,
+          completed_at: step.completed_at,
+          duration_sec: (new Date(step.completed_at) - new Date(step.started_at)) / 1000,
+        }))
+      }))
+    });
+  }
+
   // End root span for Deploy at deployEnd, else now
   if (job === 'Deploy' && deployEnd) {
     rootSpan.end(deployEnd);
@@ -245,7 +307,7 @@ async function main() {
     rootSpan.end();
   }
 
-  // At the end, send ALL step logs as a single JSON array to Dynatrace Log Ingest
+  // At the end, send ALL step logs and metrics as a single JSON array to Dynatrace Log Ingest
   await sendExecutionLogsToDynatrace(executionLogs, rootSpan.spanContext().traceId);
 
   await sdk.shutdown();

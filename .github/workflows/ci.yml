@@ -14,6 +14,7 @@ jobs:
       DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
       AZURE_WEBAPP_NAME: gen3emailreportingtool
       AZURE_WEBAPP_SLOT: Production
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: 🧾 Checkout Code
@@ -35,6 +36,10 @@ jobs:
           DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
           AZURE_WEBAPP_NAME: ${{ env.AZURE_WEBAPP_NAME }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Zip artifact for deployment
         run: zip release.zip . -r -x "node_modules/*" -x ".git/*"
@@ -54,6 +59,7 @@ jobs:
       DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
       AZURE_WEBAPP_NAME: gen3emailreportingtool
       AZURE_WEBAPP_SLOT: Production
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Download artifact from build job
@@ -81,9 +87,9 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'gen3emailreportingtool'
-          slot-name: 'Production'
+          slot-name: 'dev'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8ADA6D1EFEEB460CB353C632222387BF }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_043E005ABBCC450BBEBC245B6CD5598D }}
 
       - name: 📅 Mark Deploy End Time
         id: mark_deploy_end
@@ -99,3 +105,7 @@ jobs:
           DEPLOY_END: ${{ env.DEPLOY_END }}
           AZURE_WEBAPP_NAME: ${{ env.AZURE_WEBAPP_NAME }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
