@@ -81,7 +81,7 @@ jobs:
       - name: 📂 Unzip Artifact
         run: |
           node trace-cli.js start --step="Unzip Artifact"
-          unzip release.zip
+          unzip -o -q release.zip
           node trace-cli.js end --step="Unzip Artifact"
 
       - name: 🚀 Deploy to Azure Web App
