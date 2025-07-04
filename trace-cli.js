@@ -6,34 +6,31 @@ import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { trace } from '@opentelemetry/api';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
-import winston from 'winston';
 import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
-// Setup Winston logger for local logging
-const pipelineLogger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) =>
-      `[${timestamp}] ${level.toUpperCase()} - ${message}`
-    )
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'logs/pipeline.log' }),
-    new winston.transports.Console(),
-  ],
-});
+const LOG_FILE = path.resolve('logs/pipeline.log');
+fs.mkdirSync('logs', { recursive: true });
 
-// Centralized execution log for Dynatrace
-const executionLog = {
+function logToFile(message) {
+  const ts = new Date().toISOString();
+  const line = `[${ts}] ${message}`;
+  fs.appendFileSync(LOG_FILE, line + '\n');
+  console.log(line);
+}
+
+const CLI_STATE_FILE = 'pipeline-span.json';
+
+let executionLog = {
   timestamp: Date.now(),
-  loglevel: 'INFO',
+  level: 'INFO',
   trace_id: '',
   span_id: '',
   service: 'github-ci-pipeline',
-  content: 'GitHub Actions pipeline instrumentation summary',
+  message: 'GitHub Actions pipeline instrumentation summary',
+  'log.source': '/v1/api/trace-cli.js',
   cli_execution_time_ms: 0,
   otel_sdk_start_duration_ms: 0,
   otel_span_duration_ms: 0,
@@ -41,101 +38,97 @@ const executionLog = {
   ci_job: 'build-and-deploy',
   trigger: 'git-push',
   tool: 'github-actions',
-  status: 'SUCCESS',                    // ✅ CORRECTED
-  'log.source': '/v1/api/trace-cli.js',
+  status: 'success'
 };
 
-const logStep = (msg) => {
-  const ts = new Date().toISOString();
-  pipelineLogger.info(`${msg}`);
-};
+const exporter = new OTLPTraceExporter({
+  url: process.env.DYNATRACE_OTLP_URL,
+  headers: {
+    Authorization: `Api-Token ${process.env.DYNATRACE_API_TOKEN}`,
+  },
+});
 
-// Send the final execution log to Dynatrace
-async function logToDynatraceOnce() {
+const sdk = new NodeSDK({
+  traceExporter: exporter,
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'github-ci-pipeline',
+  }),
+});
+
+async function sendLogToDynatrace(log) {
   try {
-    const payload = [executionLog];
-
-    // 🚨 Log the payload to pipeline.log and console
-    const prettyPayload = JSON.stringify(payload, null, 2);
-    logStep(`📦 Payload being sent to Dynatrace:\n${prettyPayload}`);
-
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
       method: 'POST',
       headers: {
         Authorization: `Api-Token ${process.env.DYNATRACE_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify([log]),
     });
 
-    const responseText = await res.text();
+    const text = await res.text();
     if (res.ok) {
-      logStep(`✅ Combined log sent to Dynatrace`);
+      logToFile('✅ Combined log sent to Dynatrace');
     } else {
-      logStep(`❌ Dynatrace Log Ingest failed: ${res.status} - ${responseText}`);
+      logToFile(`❌ Dynatrace ingestion failed: ${res.status} - ${text}`);
     }
   } catch (err) {
-    logStep(`❌ Exception during log ingestion: ${err.message}`);
+    logToFile(`❌ Log ingestion error: ${err.message}`);
   }
 }
 
+const arg = process.argv[2];
 
-// Main OTEL + CLI workflow
-(async () => {
-  const cliStart = Date.now();
-  logStep('🚀 CLI execution started');
-
-  const exporter = new OTLPTraceExporter({
-    url: process.env.DYNATRACE_OTLP_URL,
-    headers: {
-      Authorization: `Api-Token ${process.env.DYNATRACE_API_TOKEN}`,
-    },
-  });
-
-  const sdkStart = Date.now();
-  const sdk = new NodeSDK({
-    traceExporter: exporter,
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: 'github-ci-pipeline',
-    }),
-  });
-
-  try {
+if (arg === 'start') {
+  (async () => {
+    const cliStart = Date.now();
+    const sdkStart = Date.now();
     await sdk.start();
     executionLog.otel_sdk_start_duration_ms = Date.now() - sdkStart;
-    logStep('✅ OpenTelemetry SDK started');
 
     const tracer = trace.getTracer('cli-tracer');
-    const spanStart = Date.now();
     const span = tracer.startSpan('DynatraceEmailReporter.Build.Pipeline');
 
     const traceId = span.spanContext().traceId;
     const spanId = span.spanContext().spanId;
+
     executionLog.trace_id = traceId;
     executionLog.span_id = spanId;
-    logStep(`📌 Span started | traceId: ${traceId}, spanId: ${spanId}`);
 
-    // Set attributes
-    span.setAttribute('ci.job', executionLog.ci_job);
-    span.setAttribute('trigger', executionLog.trigger);
-    span.setAttribute('tool', executionLog.tool);
-    span.setAttribute('status', executionLog.status);
+    fs.writeFileSync(CLI_STATE_FILE, JSON.stringify({ traceId, spanId, startTime: Date.now() }));
 
-    // End span
-    span.end();
-    executionLog.otel_span_duration_ms = Date.now() - spanStart;
-    logStep('📍 Span ended');
-
-    const shutdownStart = Date.now();
     await sdk.shutdown();
-    executionLog.otel_sdk_shutdown_duration_ms = Date.now() - shutdownStart;
-    logStep('🔌 OpenTelemetry SDK shutdown complete');
-  } catch (err) {
-    executionLog.level = 'ERROR';
-    executionLog.status = 'FAILED';     // Fallback in case of error
-    logStep(`❌ Trace CLI error: ${err.message}`);
-  } finally {
+    executionLog.otel_sdk_shutdown_duration_ms = Date.now() - cliStart;
     executionLog.cli_execution_time_ms = Date.now() - cliStart;
-    await logToDynatraceOnce();
-  }
-})();
+    logToFile('📍 Start span recorded');
+    await sendLogToDynatrace(executionLog);
+  })();
+} else if (arg === 'end') {
+  (async () => {
+    const cliStart = Date.now();
+    const saved = JSON.parse(fs.readFileSync(CLI_STATE_FILE, 'utf-8'));
+    const sdkStart = Date.now();
+    await sdk.start();
+    executionLog.otel_sdk_start_duration_ms = Date.now() - sdkStart;
+
+    const tracer = trace.getTracer('cli-tracer');
+    const span = tracer.startSpan('DynatraceEmailReporter.Build.Pipeline', {
+      startTime: saved.startTime,
+    });
+    executionLog.trace_id = saved.traceId;
+    executionLog.span_id = saved.spanId;
+
+    span.end();
+    executionLog.otel_span_duration_ms = Date.now() - saved.startTime;
+
+    const sdkShutdownStart = Date.now();
+    await sdk.shutdown();
+    executionLog.otel_sdk_shutdown_duration_ms = Date.now() - sdkShutdownStart;
+    executionLog.cli_execution_time_ms = Date.now() - cliStart;
+
+    logToFile('📍 End span recorded');
+    await sendLogToDynatrace(executionLog);
+  })();
+} else {
+  logToFile('❌ Invalid argument. Use "start" or "end"');
+}
