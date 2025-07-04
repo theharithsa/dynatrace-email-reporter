@@ -1,4 +1,4 @@
-name: Build and Deploy Node.js App with Tracing
+name: Build and Deploy Node.js App with Dynatrace Tracing
 
 on:
   push:
@@ -86,7 +86,7 @@ jobs:
         with:
           name: node-app
 
-      - name: 🚀 Start Deploy Trace
+      - name: 🚀 Start Deploy Trace (reuse trace ID)
         run: node trace-cli.js start --step="Deploy Trace Start"
 
       - name: 📂 Unzip Artifact
@@ -99,7 +99,7 @@ jobs:
         run: |
           node trace-cli.js start-child --step="Azure Deployment"
           echo "Deploying..."
-          echo "Done."
+          echo "Done"
           node trace-cli.js end-child --step="Azure Deployment"
 
       - name: 🛑 End Deploy Trace
