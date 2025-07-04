@@ -1,112 +1,146 @@
 // pipeline-trace.js
-const { NodeSDK } = require('@opentelemetry/sdk-node');
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-proto');
-const { Resource } = require('@opentelemetry/resources');
-const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
-const { trace, context } = require('@opentelemetry/api');
-const { execSync } = require('child_process');
-require('dotenv').config();
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import * as otel from '@opentelemetry/api';
+import dotenv from 'dotenv';
+import { execSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const exporter = new OTLPTraceExporter({
-  url: process.env.DYNATRACE_OTLP_URL,
-  headers: { Authorization: `Api-Token ${process.env.DYNATRACE_API_TOKEN}` },
-});
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-const sdk = new NodeSDK({
-  traceExporter: exporter,
-  resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'github-ci-pipeline',
-  }),
-});
+const OTLP_URL = process.env.DYNATRACE_OTLP_URL;
+const OTLP_TOKEN = process.env.DYNATRACE_API_TOKEN;
+const SERVICE_NAME = 'github-ci-pipeline';
 
-async function runBuildTrace() {
-  await sdk.start();
-  const tracer = trace.getTracer('pipeline-trace');
-
-  const rootSpan = tracer.startSpan('Build');
-  await context.with(trace.setSpan(context.active(), rootSpan), async () => {
-    // Install dependencies
-    const installSpan = tracer.startSpan('Install Dependencies');
-    await context.with(trace.setSpan(context.active(), installSpan), async () => {
-      console.log('Installing dependencies...');
-      execSync('npm ci', { stdio: 'inherit' });
-    });
-    installSpan.end();
-
-    // Build & Test
-    const buildTestSpan = tracer.startSpan('Build and Test');
-    await context.with(trace.setSpan(context.active(), buildTestSpan), async () => {
-      try {
-        execSync('npm run build --if-present', { stdio: 'inherit' });
-        execSync('npm test --if-present', { stdio: 'inherit' });
-      } catch (e) { /* no-op for test failures */ }
-    });
-    buildTestSpan.end();
-
-    // Zip Artifact
-    const zipSpan = tracer.startSpan('Zip Artifact');
-    await context.with(trace.setSpan(context.active(), zipSpan), async () => {
-      execSync('zip release.zip . -r -x "node_modules/*" -x ".git/*"', { stdio: 'inherit' });
-    });
-    zipSpan.end();
-  });
-
-  rootSpan.end();
-  await sdk.shutdown();
+// Simple timer utility
+function time(label, fn) {
+  const start = Date.now();
+  const result = fn();
+  const end = Date.now();
+  return { duration: end - start, result };
 }
 
-async function runDeployTrace() {
+// For async steps
+async function timeAsync(label, fn) {
+  const start = Date.now();
+  const result = await fn();
+  const end = Date.now();
+  return { duration: end - start, result };
+}
+
+function log(msg) {
+  console.log(`[${new Date().toISOString()}] ${msg}`);
+}
+
+// Main logic
+async function main() {
+  const job = process.argv[2] || 'Build'; // "Build" or "Deploy"
+
+  // OpenTelemetry SDK setup
+  const exporter = new OTLPTraceExporter({
+    url: OTLP_URL,
+    headers: { Authorization: `Api-Token ${OTLP_TOKEN}` }
+  });
+
+  const sdk = new NodeSDK({
+    traceExporter: exporter,
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: SERVICE_NAME,
+    }),
+  });
+
   await sdk.start();
-  const tracer = trace.getTracer('pipeline-trace');
-  const rootSpan = tracer.startSpan('Deploy');
-  await context.with(trace.setSpan(context.active(), rootSpan), async () => {
-    // Download Artifact
-    const downloadSpan = tracer.startSpan('Download Artifact');
-    await context.with(trace.setSpan(context.active(), downloadSpan), async () => {
-      // Already downloaded by the workflow, so just simulate
-      console.log('Artifact downloaded.');
-    });
-    downloadSpan.end();
+  const tracer = otel.trace.getTracer('pipeline-tracer');
 
-    // Unzip Artifact
-    const unzipSpan = tracer.startSpan('Unzip Artifact');
-    await context.with(trace.setSpan(context.active(), unzipSpan), async () => {
-      execSync('unzip -o release.zip', { stdio: 'inherit' });
-    });
-    unzipSpan.end();
+  // Start root trace/span for this job (Build or Deploy)
+  const rootSpan = tracer.startSpan(job, { kind: otel.SpanKind.SERVER });
+  const ctx = otel.trace.setSpan(otel.context.active(), rootSpan);
 
-    // Azure Deploy (child span)
-    const deploySpan = tracer.startSpan('Azure Deployment');
-    const start = Date.now();
-    await context.with(trace.setSpan(context.active(), deploySpan), async () => {
-      try {
-        // Write the publish profile to a file
-        require('fs').writeFileSync('publish-profile.xml', process.env.AZURE_PUBLISH_PROFILE);
-        execSync(
-          `az webapp deployment source config-zip --resource-group ${process.env.AZURE_RESOURCE_GROUP} --name ${process.env.AZURE_WEBAPP_NAME} --src release.zip --slot ${process.env.AZURE_WEBAPP_SLOT} --publish-profile publish-profile.xml`,
-          { stdio: 'inherit' }
-        );
-        const duration = Date.now() - start;
-        deploySpan.setAttribute('azure.deploy.duration_ms', duration);
-      } catch (e) {
-        deploySpan.recordException(e);
-        deploySpan.setStatus({ code: 2, message: e.message });
-        throw e;
-      } finally {
-        // Optionally delete publish profile file
-        require('fs').unlinkSync('publish-profile.xml');
+  let steps = [];
+  if (job === 'Build') {
+    steps = [
+      {
+        name: 'Install Dependencies',
+        run: () => {
+          log('Installing dependencies...');
+          execSync('npm install', { stdio: 'inherit' });
+        },
+      },
+      {
+        name: 'Build and Test',
+        run: () => {
+          log('Running build and test...');
+          try { execSync('npm run build --if-present', { stdio: 'inherit' }); } catch (e) {}
+          try { execSync('npm run test --if-present', { stdio: 'inherit' }); } catch (e) {}
+        },
+      },
+      {
+        name: 'Zip Artifact',
+        run: () => {
+          log('Zipping release...');
+          execSync('zip release.zip . -r -x "node_modules/*" -x ".git/*"', { stdio: 'inherit' });
+        },
       }
+    ];
+  } else if (job === 'Deploy') {
+    steps = [
+      {
+        name: 'Unzip Artifact',
+        run: () => {
+          log('Unzipping release...');
+          execSync('unzip -o release.zip', { stdio: 'inherit' });
+        },
+      },
+      {
+        name: 'Azure Deployment',
+        run: () => {
+          log('Deploying to Azure Web App...');
+          // Azure CLI required: AZURE_WEBAPP_NAME and AZURE_RESOURCE_GROUP env vars
+          // `AZUREAPPSERVICE_PUBLISHPROFILE_...` is set as secret env by GitHub Action
+          const profile = process.env.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790;
+          if (!profile) throw new Error('Missing AZUREAPPSERVICE_PUBLISHPROFILE secret!');
+          const fs = await import('fs');
+          fs.writeFileSync('publishProfile.publishsettings', profile);
+          execSync(
+            `npx azure-actions-webapp-publish --publish-profile-path publishProfile.publishsettings --package . --resource-group "${process.env.AZURE_RESOURCE_GROUP}" --name "${process.env.AZURE_WEBAPP_NAME}" --slot Production`,
+            { stdio: 'inherit' }
+          );
+          fs.unlinkSync('publishProfile.publishsettings');
+        },
+      }
+    ];
+  } else {
+    throw new Error('Unknown job type: ' + job);
+  }
+
+  // Run all steps as child spans
+  for (const step of steps) {
+    await otel.context.with(ctx, async () => {
+      const span = tracer.startSpan(step.name, { parent: rootSpan, kind: otel.SpanKind.INTERNAL });
+      let duration = 0;
+      try {
+        const { duration: stepDuration } = await timeAsync(step.name, async () => await step.run());
+        duration = stepDuration;
+        span.setStatus({ code: otel.SpanStatusCode.OK });
+      } catch (err) {
+        span.setStatus({ code: otel.SpanStatusCode.ERROR, message: err.message });
+        log(`❌ Step failed: ${step.name}: ${err.message}`);
+      }
+      span.setAttribute('ci.step.duration_ms', duration);
+      span.end();
     });
-    deploySpan.end();
-  });
+  }
+
   rootSpan.end();
   await sdk.shutdown();
+  log(`✅ ${job} trace completed`);
 }
 
-// Entrypoint
-(async () => {
-  const stage = process.argv[2];
-  if (stage === 'Build') await runBuildTrace();
-  else if (stage === 'Deploy') await runDeployTrace();
-  else throw new Error(`Unknown stage: ${stage}`);
-})();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
