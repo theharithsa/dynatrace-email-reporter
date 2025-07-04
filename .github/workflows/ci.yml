@@ -63,5 +63,14 @@ jobs:
         with:
           name: node-app
 
-      - name: 🚀 Deploy and Trace All Steps
+      - name: 🏗️ Deploy Steps Before Azure (traced)
         run: node pipeline-trace.js Deploy
+
+      - name: 'Deploy to Azure Web App'
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'gen3emailreporting'
+          slot-name: 'Production'
+          package: .
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
