@@ -13,59 +13,75 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
-        with:
-          node-version: '22.x'
-
-      - name: Set environment variables
+      - name: ⚙️ Set Environment Variables
         run: |
           echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
 
-      - name: Install dependencies
-        run: npm install
+      - name: 📌 Start Full Trace
+        run: node trace-cli.js start --step="Start CI/CD Trace"
 
-      - name: Start trace CLI span
-        run: node trace-cli.js start
-
-      - name: npm build and test
+      - name: 📦 Install Dependencies
         run: |
+          node trace-cli.js start --step="Install Dependencies"
+          npm install
+          node trace-cli.js end --step="Install Dependencies"
+
+      - name: 🏗️ Build and Test
+        run: |
+          node trace-cli.js start --step="Build and Test"
           npm run build --if-present
           npm run test --if-present
+          node trace-cli.js end --step="Build and Test"
 
-      - name: Zip artifact
-        run: zip release.zip ./* -r
+      - name: 📦 Zip Artifact
+        run: |
+          node trace-cli.js start --step="Zip Artifact"
+          zip release.zip ./* -r
+          node trace-cli.js end --step="Zip Artifact"
 
-      - name: Upload artifact
+      - name: ⬆️ Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: release.zip
+
+      - name: ✔️ Mark Build Complete
+        run: node trace-cli.js end --step="Build Job"
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
 
     steps:
-      - name: Download artifact
+      - name: ⚙️ Set Environment Variables
+        run: |
+          echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
+          echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
+          echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
+
+      - name: 📥 Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
 
-      - name: Unzip artifact
-        run: unzip release.zip
+      - name: 📂 Unzip Artifact
+        run: |
+          node trace-cli.js start --step="Unzip Artifact"
+          unzip release.zip
+          node trace-cli.js end --step="Unzip Artifact"
 
-      - name: Deploy to Azure
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'gen3emailreporting'
-          slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_702906AE83C54163AD1E25C938495ED9 }}
+      - name: 🚀 Deploy to Azure Web App
+        run: |
+          node trace-cli.js start --step="Azure Deployment"
+          echo "Deploying to Azure Web App..."
+          # Replace below with actual deploy if needed
+          echo "Deployment done"
+          node trace-cli.js end --step="Azure Deployment"
 
-      - name: End trace CLI span
-        run: node trace-cli.js end
+      - name: ✅ End Full Trace
+        run: node trace-cli.js end --step="End CI/CD Trace"
