@@ -6,6 +6,7 @@ import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import * as otel from '@opentelemetry/api';
 import dotenv from 'dotenv';
 import { execSync } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,15 +17,10 @@ const OTLP_URL = process.env.DYNATRACE_OTLP_URL;
 const OTLP_TOKEN = process.env.DYNATRACE_API_TOKEN;
 const SERVICE_NAME = 'github-ci-pipeline';
 
-// Simple timer utility
-function time(label, fn) {
-  const start = Date.now();
-  const result = fn();
-  const end = Date.now();
-  return { duration: end - start, result };
+function log(msg) {
+  console.log(`[${new Date().toISOString()}] ${msg}`);
 }
 
-// For async steps
 async function timeAsync(label, fn) {
   const start = Date.now();
   const result = await fn();
@@ -32,13 +28,8 @@ async function timeAsync(label, fn) {
   return { duration: end - start, result };
 }
 
-function log(msg) {
-  console.log(`[${new Date().toISOString()}] ${msg}`);
-}
-
-// Main logic
 async function main() {
-  const job = process.argv[2] || 'Build'; // "Build" or "Deploy"
+  const job = process.argv[2] || 'Build';
 
   // OpenTelemetry SDK setup
   const exporter = new OTLPTraceExporter({
@@ -65,14 +56,14 @@ async function main() {
     steps = [
       {
         name: 'Install Dependencies',
-        run: () => {
+        run: async () => {
           log('Installing dependencies...');
           execSync('npm install', { stdio: 'inherit' });
         },
       },
       {
         name: 'Build and Test',
-        run: () => {
+        run: async () => {
           log('Running build and test...');
           try { execSync('npm run build --if-present', { stdio: 'inherit' }); } catch (e) {}
           try { execSync('npm run test --if-present', { stdio: 'inherit' }); } catch (e) {}
@@ -80,7 +71,7 @@ async function main() {
       },
       {
         name: 'Zip Artifact',
-        run: () => {
+        run: async () => {
           log('Zipping release...');
           execSync('zip release.zip . -r -x "node_modules/*" -x ".git/*"', { stdio: 'inherit' });
         },
@@ -90,20 +81,18 @@ async function main() {
     steps = [
       {
         name: 'Unzip Artifact',
-        run: () => {
+        run: async () => {
           log('Unzipping release...');
           execSync('unzip -o release.zip', { stdio: 'inherit' });
         },
       },
       {
         name: 'Azure Deployment',
-        run: () => {
+        run: async () => {
           log('Deploying to Azure Web App...');
-          // Azure CLI required: AZURE_WEBAPP_NAME and AZURE_RESOURCE_GROUP env vars
-          // `AZUREAPPSERVICE_PUBLISHPROFILE_...` is set as secret env by GitHub Action
+          // Requires: AZUREAPPSERVICE_PUBLISHPROFILE_*, AZURE_RESOURCE_GROUP, AZURE_WEBAPP_NAME in env
           const profile = process.env.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790;
           if (!profile) throw new Error('Missing AZUREAPPSERVICE_PUBLISHPROFILE secret!');
-          const fs = await import('fs');
           fs.writeFileSync('publishProfile.publishsettings', profile);
           execSync(
             `npx azure-actions-webapp-publish --publish-profile-path publishProfile.publishsettings --package . --resource-group "${process.env.AZURE_RESOURCE_GROUP}" --name "${process.env.AZURE_WEBAPP_NAME}" --slot Production`,
