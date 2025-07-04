@@ -1,4 +1,4 @@
-name: Build and Deploy Node.js App with Dynatrace Tracing
+name: Build and Deploy Node.js App with Dynatrace Tracing (using trace_id output)
 
 on:
   push:
@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      trace_id: ${{ steps.start-trace.outputs.trace_id }}
 
     steps:
       - name: 🧾 Checkout Code
@@ -23,13 +25,10 @@ jobs:
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
       - name: 🚀 Start Build Trace
-        run: node trace-cli.js start --step="Build Trace Start"
-
-      - name: 📤 Upload Trace Context Immediately
-        uses: actions/upload-artifact@v4
-        with:
-          name: trace-context
-          path: .trace-context.json
+        id: start-trace
+        run: |
+          TRACE_ID=$(node trace-cli.js start --step="Build Trace Start" | grep trace_id= | cut -d '=' -f2)
+          echo "trace_id=$TRACE_ID" >> $GITHUB_OUTPUT
 
       - name: 📦 Install App Dependencies
         run: |
@@ -62,6 +61,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      TRACE_ID: ${{ needs.build.outputs.trace_id }}
 
     steps:
       - name: 🧾 Checkout Code
@@ -76,18 +77,13 @@ jobs:
       - name: ⬇️ Install Trace CLI Dependencies
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
 
-      - name: 📥 Download Trace Context
-        uses: actions/download-artifact@v4
-        with:
-          name: trace-context
-
       - name: 📥 Download App Artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
 
-      - name: 🚀 Start Deploy Trace (reuse trace ID)
-        run: node trace-cli.js start --step="Deploy Trace Start"
+      - name: 🚀 Start Deploy Trace (reuse build trace)
+        run: node trace-cli.js start --step="Deploy Trace Start" --trace-id=$TRACE_ID
 
       - name: 📂 Unzip Artifact
         run: |
