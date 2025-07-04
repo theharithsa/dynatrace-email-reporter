@@ -107,7 +107,7 @@ jobs:
         run: |
           node trace-cli.js end --step="Build" \
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-            --span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -189,4 +189,4 @@ jobs:
         run: |
           node trace-cli.js end --step="Deploy" \
             --trace-id=${{ steps.start_trace.outputs.trace_id }} \
-            --span-id=${{ steps.start_trace.outputs.parent_span_id }}
+            --parent-span-id=${{ steps.start_trace.outputs.parent_span_id }}
