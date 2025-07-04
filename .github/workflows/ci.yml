@@ -8,20 +8,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
+      DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
+      DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
+      AZURE_WEBAPP_NAME: gen3emailreporting
+      AZURE_WEBAPP_SLOT: Production
+      AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+      AZURE_RESOURCE_GROUP: gen3emailreporting_group
+
     steps:
       - name: 🧾 Checkout Code
         uses: actions/checkout@v4
 
       - name: ⬇️ Install Dependencies
         run: npm ci
-        env:
-          DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
-          DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
-          DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
-          AZURE_WEBAPP_NAME: gen3emailreporting
-          AZURE_WEBAPP_SLOT: Production
-          AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
-          AZURE_RESOURCE_GROUP: gen3emailreporting_group
 
       - name: 🏗️ Build and Trace All Steps
         run: node pipeline-trace.js Build
@@ -38,18 +39,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
+      DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
+      DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
+      AZURE_WEBAPP_NAME: gen3emailreporting
+      AZURE_WEBAPP_SLOT: Production
+      AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+      AZURE_RESOURCE_GROUP: gen3emailreporting_group
+
     steps:
       - name: 🧾 Checkout Code
         uses: actions/checkout@v4
-
-      - name: ⚙️ Set Env Vars
-        run: |
-          echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
-          echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
-          echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
-          echo "AZURE_WEBAPP_NAME=gen3emailreporting" >> $GITHUB_ENV
-          echo "AZURE_WEBAPP_SLOT=Production" >> $GITHUB_ENV
-          echo "AZURE_PUBLISH_PROFILE='${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}'" >> $GITHUB_ENV
 
       - name: 📥 Download Artifact
         uses: actions/download-artifact@v4
@@ -62,11 +63,3 @@ jobs:
 
       - name: 🏗️ Deploy and Trace All Steps
         run: node pipeline-trace.js Deploy
-        env:
-          DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
-          DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
-          DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
-          AZURE_WEBAPP_NAME: gen3emailreporting
-          AZURE_WEBAPP_SLOT: Production
-          AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
-          AZURE_RESOURCE_GROUP: gen3emailreporting_group
