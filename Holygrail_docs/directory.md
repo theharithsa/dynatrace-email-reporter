@@ -1,7 +1,3 @@
-Here’s a breakdown of your project directory structure based on the screenshot and what each file is for:
-
----
-
 ### **Directory Structure & File Descriptions**
 
 ```
@@ -62,7 +58,3 @@ Here’s a breakdown of your project directory structure based on the screenshot
 * **Documentation:**
 
   * `*.md` files document usage, troubleshooting, and how OTel and Dynatrace integration works.
-
----
-
-**Let me know if you want a Markdown copy of this for your repo or more details on any specific file!**
