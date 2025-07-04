@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
 
-const { trace, context, ROOT_CONTEXT, setSpanContext } = otelApi;
+const { trace, context, ROOT_CONTEXT } = otelApi;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
@@ -100,24 +100,26 @@ async function logToDynatrace(payload) {
   } else if (command === 'start-child') {
     if (!traceIdArg || !parentSpanId) {
       logger.error('❌ Missing trace-id or parent-span-id');
-      // Always print for YAML output
       console.log(`trace_id=${traceIdArg || ''}`);
       console.log(`span_id=`);
       process.exit(1);
     }
     logger.info(`🟢 Child span: ${step}`);
 
-    const parentCtx = setSpanContext(ROOT_CONTEXT, {
+    // Fake parent span context for correct stitching
+    const parentSpanContext = {
       traceId: traceIdArg,
       spanId: parentSpanId,
-      traceFlags: 1
-    });
+      traceFlags: 1,
+      isRemote: false
+    };
+    const fakeParentSpan = { context: () => parentSpanContext };
+    const parentCtx = trace.setSpan(ROOT_CONTEXT, fakeParentSpan);
 
     let span, spanContext;
     context.with(parentCtx, () => {
       span = tracer.startSpan(step);
       spanContext = span.spanContext();
-      // Output for YAML
       console.log(`trace_id=${spanContext.traceId}`);
       console.log(`span_id=${spanContext.spanId}`);
       span.setAttribute('ci.step', step);
@@ -125,7 +127,6 @@ async function logToDynatrace(payload) {
       span.end();
     });
 
-    // Optionally log to Dynatrace
     await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
