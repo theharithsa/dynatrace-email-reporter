@@ -85,16 +85,20 @@ async function logToDynatrace(payload) {
     span.setAttribute('ci.job', step);
 
     const spanContext = span.spanContext();
+    // DEBUG output
+    console.log(`DEBUG: Root span started. trace_id=${spanContext.traceId}, parent_span_id=${spanContext.spanId}`);
+    // Print for GitHub Actions
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
 
     // Do NOT end the span now.
-    // You cannot persist the tracer or span object, so just output IDs.
     await sdk.shutdown();
 
   } else if (command === 'start-child') {
     if (!traceIdArg || !parentSpanId) {
       logger.error('❌ Missing trace-id or parent-span-id');
+      console.log(`trace_id=${traceIdArg || ''}`);
+      console.log(`span_id=`);
       process.exit(1);
     }
     logger.info(`🟢 Starting child span: ${step}`);
@@ -109,10 +113,13 @@ async function logToDynatrace(payload) {
     let childSpanId;
     context.with(parentCtx, () => {
       const span = tracer.startSpan(step);
-      childSpanId = span.spanContext().spanId;
-      console.log(`trace_id=${traceIdArg}`);
+      const spanContext = span.spanContext();
+      childSpanId = spanContext.spanId;
+      // DEBUG output
+      console.log(`DEBUG: Child span started for ${step}. trace_id=${spanContext.traceId}, span_id=${childSpanId}, parent_span_id=${parentSpanId}`);
+      // Print for GitHub Actions
+      console.log(`trace_id=${spanContext.traceId}`);
       console.log(`span_id=${childSpanId}`);
-      // Do NOT end; will end in end-child
     });
 
     await sdk.shutdown();
@@ -120,6 +127,8 @@ async function logToDynatrace(payload) {
   } else if (command === 'end-child') {
     if (!traceIdArg || !spanIdArg) {
       logger.error('❌ Missing trace-id or span-id');
+      console.log(`trace_id=${traceIdArg || ''}`);
+      console.log(`span_id=${spanIdArg || ''}`);
       process.exit(1);
     }
     logger.info(`🔴 Ending child span: ${step}`);
@@ -138,6 +147,12 @@ async function logToDynatrace(payload) {
       span.end();
     });
 
+    // DEBUG output
+    console.log(`DEBUG: Child span ended for ${step}. trace_id=${traceIdArg}, span_id=${spanIdArg}`);
+    // Print for GitHub Actions (not strictly needed here, but for troubleshooting)
+    console.log(`trace_id=${traceIdArg}`);
+    console.log(`span_id=${spanIdArg}`);
+
     await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
@@ -155,6 +170,8 @@ async function logToDynatrace(payload) {
   } else if (command === 'end') {
     if (!traceIdArg || !spanIdArg) {
       logger.error('❌ Missing trace-id or root span-id');
+      console.log(`trace_id=${traceIdArg || ''}`);
+      console.log(`span_id=${spanIdArg || ''}`);
       process.exit(1);
     }
     logger.info(`🛑 Ending root span: ${step}`);
@@ -171,6 +188,12 @@ async function logToDynatrace(payload) {
       span.setAttribute('ci.trace.end', true);
       span.end();
     });
+
+    // DEBUG output
+    console.log(`DEBUG: Root span ended for ${step}. trace_id=${traceIdArg}, span_id=${spanIdArg}`);
+    // Print for GitHub Actions
+    console.log(`trace_id=${traceIdArg}`);
+    console.log(`span_id=${spanIdArg}`);
 
     await logToDynatrace({
       timestamp: Date.now(),
