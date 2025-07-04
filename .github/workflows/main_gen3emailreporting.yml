@@ -1,96 +1,79 @@
-name: Build and deploy Node.js app to Azure Web App - gen3emailreporting
+name: Build and Deploy to Azure Web App
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
+    env:
+      CICD_TRACE_TYPE: build
     steps:
-      - name: 📥 Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: ⚙️ Set Environment Variables
+      - name: Setup Environment Variables
         run: |
           echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
-          
-      - name: ⬇️ Install OpenTelemetry CLI Dependencies
+      - name: Install CLI Dependencies
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
-      
-      - name: 📌 Start Full Trace
-        run: node trace-cli.js start --step="Start CI/CD Trace"
-
-      - name: 📦 Install Dependencies
+      - name: Start Build Trace
+        run: node trace-cli.js start --step="Build Trace Start"
+      - name: Install App Dependencies
         run: |
           node trace-cli.js start --step="Install Dependencies"
           npm install
           node trace-cli.js end --step="Install Dependencies"
-
-      - name: 🏗️ Build and Test
+      - name: Build & Test
         run: |
-          node trace-cli.js start --step="Build and Test"
+          node trace-cli.js start --step="Build & Test"
           npm run build --if-present
           npm run test --if-present
-          node trace-cli.js end --step="Build and Test"
-
-      - name: 📦 Zip Artifact
+          node trace-cli.js end --step="Build & Test"
+      - name: Zip Release Artifact
         run: |
           node trace-cli.js start --step="Zip Artifact"
           zip release.zip ./* -r
           node trace-cli.js end --step="Zip Artifact"
-
-      - name: ⬆️ Upload Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: release.zip
-
-      - name: ✔️ Mark Build Complete
-        run: node trace-cli.js end --step="Build Job"
+      - name: End Build Trace
+        run: node trace-cli.js end --step="Build Trace End"
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-
+    env:
+      CICD_TRACE_TYPE: deploy
     steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: ⚙️ Set Environment Variables
+      - name: Setup Environment Variables
         run: |
           echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
           echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
           echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
-
-      - name: ⬇️ Install OpenTelemetry CLI Dependencies
+      - name: Install CLI Dependencies
         run: npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/resources @opentelemetry/semantic-conventions @opentelemetry/exporter-trace-otlp-proto dotenv node-fetch winston
-
-      - name: 📥 Download Artifact
+      - name: Start Deploy Trace
+        run: node trace-cli.js start --step="Deploy Trace Start"
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
-      - name: 📂 Unzip Artifact
+      - name: Unzip Artifact
         run: |
           node trace-cli.js start --step="Unzip Artifact"
-          unzip -o -q release.zip
+          unzip release.zip
           node trace-cli.js end --step="Unzip Artifact"
-
-      - name: 🚀 Deploy to Azure Web App
+      - name: Deploy to Azure
         run: |
-          node trace-cli.js start --step="Azure Deployment"
-          echo "Deploying to Azure Web App..."
-          # Actual deploy logic goes here
-          echo "Deployment done"
-          node trace-cli.js end --step="Azure Deployment"
-
-      - name: ✅ End Full Trace
-        run: node trace-cli.js end --step="End CI/CD Trace"
+          node trace-cli.js start --step="Azure WebApp Deploy"
+          echo "Deploying..."
+          node trace-cli.js end --step="Azure WebApp Deploy"
+      - name: End Deploy Trace
+        run: node trace-cli.js end --step="Deploy Trace End"
