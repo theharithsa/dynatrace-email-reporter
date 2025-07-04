@@ -49,6 +49,17 @@ jobs:
       AZURE_RESOURCE_GROUP: gen3emailreporting_group
 
     steps:
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: node-app
+
+      - name: 🗃️ Unzip Artifact
+        run: unzip -o release.zip
+
       - name: 📅 Mark Deploy Start Time
         run: echo "DEPLOY_START=$(date +%s)" >> $GITHUB_ENV
 
