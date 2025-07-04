@@ -10,11 +10,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
 
-const { trace } = otelApi;
+const { trace, context, ROOT_CONTEXT, setSpan, SpanKind } = otelApi;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -24,7 +23,7 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()]
 });
 
-// Parse args
+// --- Args ---
 const args = process.argv.slice(2);
 const command = args[0];
 function getArg(key) {
@@ -32,11 +31,11 @@ function getArg(key) {
   return match ? match.split('=')[1] : null;
 }
 const step = getArg('step') || 'Unnamed';
-const traceIdArg = getArg('trace-id');
+const traceId = getArg('trace-id');
 const parentSpanId = getArg('parent-span-id');
-const spanIdArg = getArg('span-id');
+const spanId = getArg('span-id');
 
-// Dynatrace log
+// --- Dynatrace Log Ingest ---
 async function logToDynatrace(payload) {
   try {
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
@@ -54,6 +53,7 @@ async function logToDynatrace(payload) {
   }
 }
 
+// --- MAIN ---
 (async () => {
   const exporter = new OTLPTraceExporter({
     url: process.env.DYNATRACE_OTLP_URL,
@@ -71,102 +71,110 @@ async function logToDynatrace(payload) {
   const tracer = trace.getTracer('github-ci-tracer');
 
   if (command === 'start') {
-    // Start root span, print traceId and spanId for others to use
-    const span = tracer.startSpan(step);
-    span.setAttribute('ci.job', step);
-    // Output trace_id and span_id for parentage
-    const spanContext = span.spanContext();
-    console.log(`trace_id=${spanContext.traceId}`);
-    console.log(`parent_span_id=${spanContext.spanId}`);
-    // DO NOT end root span yet (let "end" command handle it)
+    // ROOT SPAN
+    const rootSpan = tracer.startSpan(step);
+    const rootCtx = trace.setSpan(context.active(), rootSpan);
+    // Print root trace & span for next steps
+    const sc = rootSpan.spanContext();
+    console.log(`trace_id=${sc.traceId}`);
+    console.log(`parent_span_id=${sc.spanId}`);
+    // Don't end root here!
     await sdk.shutdown();
 
   } else if (command === 'start-child') {
-    if (!traceIdArg || !parentSpanId) {
+    if (!traceId || !parentSpanId) {
       logger.error('❌ Missing trace-id or parent-span-id');
-      console.log(`trace_id=${traceIdArg || ''}`);
+      console.log(`trace_id=`);
       console.log(`span_id=`);
       process.exit(1);
     }
-    // Start child span with explicit parent context
+    // --- STITCHED CONTEXT ---
     const parentSpanContext = {
-      traceId: traceIdArg,
+      traceId,
       spanId: parentSpanId,
-      traceFlags: 1
+      traceFlags: 1,
     };
-    const span = tracer.startSpan(step, { parent: parentSpanContext });
-    const spanContext = span.spanContext();
-    console.log(`trace_id=${spanContext.traceId}`);
-    console.log(`span_id=${spanContext.spanId}`);
-    // Don't end child span here; "end-child" will do it
+    // OpenTelemetry's way to "continue" a span tree:
+    const ctxWithParent = trace.setSpanContext(ROOT_CONTEXT, parentSpanContext);
+
+    let childSpan;
+    context.with(ctxWithParent, () => {
+      childSpan = tracer.startSpan(step, { kind: SpanKind.INTERNAL });
+      const sc = childSpan.spanContext();
+      // Print for YAML
+      console.log(`trace_id=${sc.traceId}`);
+      console.log(`span_id=${sc.spanId}`);
+      // Don't end here!
+    });
+
     await sdk.shutdown();
 
   } else if (command === 'end-child') {
-    if (!traceIdArg || !spanIdArg) {
-      logger.error('❌ Missing trace-id or span-id for end-child');
-      console.log(`trace_id=${traceIdArg || ''}`);
-      console.log(`span_id=${spanIdArg || ''}`);
+    if (!traceId || !spanId) {
+      logger.error('❌ Missing trace-id or span-id');
+      console.log(`trace_id=`);
+      console.log(`span_id=`);
       process.exit(1);
     }
-    // To end a span by spanId, we must recreate it as the same context and end it
-    const parentSpanContext = {
-      traceId: traceIdArg,
-      spanId: spanIdArg,
+    const childSpanContext = {
+      traceId,
+      spanId,
       traceFlags: 1
     };
-    const span = tracer.startSpan(step, { parent: parentSpanContext });
-    span.setAttribute('ci.step', step);
-    span.setAttribute('ci.status', 'completed');
-    span.end();
+    const ctxWithParent = trace.setSpanContext(ROOT_CONTEXT, childSpanContext);
 
-    // Log to Dynatrace (optional)
+    context.with(ctxWithParent, () => {
+      const span = tracer.startSpan(step, { kind: SpanKind.INTERNAL });
+      span.end();
+    });
+
     await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
-      trace_id: traceIdArg,
-      span_id: spanIdArg,
+      trace_id: traceId,
+      span_id: spanId,
       service: 'github-ci-pipeline',
       message: `Step Completed: ${step}`,
       step,
       status: 'completed'
     });
 
-    console.log(`trace_id=${traceIdArg}`);
-    console.log(`span_id=${spanIdArg}`);
+    console.log(`trace_id=${traceId}`);
+    console.log(`span_id=${spanId}`);
     await sdk.shutdown();
 
   } else if (command === 'end') {
-    if (!traceIdArg || !spanIdArg) {
-      logger.error('❌ Missing trace-id or span-id for root span');
-      console.log(`trace_id=${traceIdArg || ''}`);
-      console.log(`span_id=${spanIdArg || ''}`);
+    if (!traceId || !parentSpanId) {
+      logger.error('❌ Missing trace-id or root span-id');
+      console.log(`trace_id=`);
+      console.log(`span_id=`);
       process.exit(1);
     }
-    // Re-create the root span using traceId and spanId and end it
-    const rootSpanContext = {
-      traceId: traceIdArg,
-      spanId: spanIdArg,
+    // End the root span
+    const rootCtx = trace.setSpanContext(ROOT_CONTEXT, {
+      traceId,
+      spanId: parentSpanId,
       traceFlags: 1
-    };
-    const span = tracer.startSpan(step, { parent: rootSpanContext });
-    span.setAttribute('ci.trace.root', step);
-    span.setAttribute('ci.trace.end', true);
-    span.end();
+    });
+
+    context.with(rootCtx, () => {
+      const span = tracer.startSpan(step, { kind: SpanKind.INTERNAL });
+      span.end();
+    });
 
     await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
-      trace_id: traceIdArg,
-      span_id: spanIdArg,
+      trace_id: traceId,
+      span_id: parentSpanId,
       service: 'github-ci-pipeline',
       message: `Root Trace Ended: ${step}`,
       step,
       status: 'root-end'
     });
 
-    console.log(`trace_id=${traceIdArg}`);
-    console.log(`span_id=${spanIdArg}`);
+    console.log(`trace_id=${traceId}`);
+    console.log(`span_id=${parentSpanId}`);
     await sdk.shutdown();
   }
 })();
- 
