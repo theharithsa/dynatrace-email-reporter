@@ -75,12 +75,14 @@ async function logToDynatraceOnce() {
 
     const responseText = await res.text();
     if (res.ok) {
+      console.log('🧪 Dynatrace Log Ingest URL:', process.env.DYNATRACE_LOG_INGEST_URL);
       pipelineLogger.info(`✅ Combined log sent to Dynatrace`);
     } else {
       pipelineLogger.error(`❌ Dynatrace Log Ingest failed: ${res.status} - ${responseText}`);
     }
   } catch (err) {
     pipelineLogger.error(`❌ Log ingestion error: ${err.message}`);
+    console.log('🧪 Dynatrace Log Ingest URL:', process.env.DYNATRACE_LOG_INGEST_URL);
   }
 }
 
