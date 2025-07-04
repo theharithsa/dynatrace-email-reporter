@@ -91,7 +91,7 @@ async function main() {
         run: async () => {
           log('Deploying to Azure Web App...');
           // Requires: AZUREAPPSERVICE_PUBLISHPROFILE_*, AZURE_RESOURCE_GROUP, AZURE_WEBAPP_NAME in env
-          const profile = process.env.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790;
+          const profile = process.env.AZURE_PUBLISH_PROFILE;
           if (!profile) throw new Error('Missing AZUREAPPSERVICE_PUBLISHPROFILE secret!');
           fs.writeFileSync('publishProfile.publishsettings', profile);
           execSync(
