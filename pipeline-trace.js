@@ -51,6 +51,13 @@ async function main() {
   const rootSpan = tracer.startSpan(job, { kind: otel.SpanKind.SERVER });
   const ctx = otel.trace.setSpan(otel.context.active(), rootSpan);
 
+  // Add useful GitHub Actions metadata to root span
+  rootSpan.setAttribute('github.repository', process.env.GITHUB_REPOSITORY || '');
+  rootSpan.setAttribute('github.sha', process.env.GITHUB_SHA || '');
+  rootSpan.setAttribute('github.run_id', process.env.GITHUB_RUN_ID || '');
+  rootSpan.setAttribute('github.workflow', process.env.GITHUB_WORKFLOW || '');
+  rootSpan.setAttribute('ci.job', job);
+
   let steps = [];
   if (job === 'Build') {
     steps = [
@@ -89,16 +96,14 @@ async function main() {
       {
         name: 'Azure Deployment',
         run: async () => {
-          log('Deploying to Azure Web App...');
-          // Requires: AZUREAPPSERVICE_PUBLISHPROFILE_*, AZURE_RESOURCE_GROUP, AZURE_WEBAPP_NAME in env
-          const profile = process.env.AZURE_PUBLISH_PROFILE;
-          if (!profile) throw new Error('Missing AZUREAPPSERVICE_PUBLISHPROFILE secret!');
-          fs.writeFileSync('publishProfile.publishsettings', profile);
+          log('Deploying to Azure Web App using Azure CLI...');
+          const resourceGroup = process.env.AZURE_RESOURCE_GROUP;
+          const webappName = process.env.AZURE_WEBAPP_NAME;
+          const slot = process.env.AZURE_WEBAPP_SLOT || 'Production';
           execSync(
-            `npx azure-actions-webapp-publish --publish-profile-path publishProfile.publishsettings --package . --resource-group "${process.env.AZURE_RESOURCE_GROUP}" --name "${process.env.AZURE_WEBAPP_NAME}" --slot Production`,
+            `az webapp deployment source config-zip --resource-group "${resourceGroup}" --name "${webappName}" --slot "${slot}" --src release.zip`,
             { stdio: 'inherit' }
           );
-          fs.unlinkSync('publishProfile.publishsettings');
         },
       }
     ];
@@ -127,6 +132,7 @@ async function main() {
   rootSpan.end();
   await sdk.shutdown();
   log(`✅ ${job} trace completed`);
+  log(`🔗 Dynatrace Trace ID: ${rootSpan.spanContext().traceId}`);
 }
 
 main().catch((err) => {
