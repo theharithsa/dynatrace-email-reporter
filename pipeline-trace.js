@@ -96,14 +96,22 @@ async function main() {
       {
         name: 'Azure Deployment',
         run: async () => {
-          log('Deploying to Azure Web App using Azure CLI...');
-          const resourceGroup = process.env.AZURE_RESOURCE_GROUP;
-          const webappName = process.env.AZURE_WEBAPP_NAME;
-          const slot = process.env.AZURE_WEBAPP_SLOT || 'Production';
+          log('Writing publish profile...');
+          const publishProfile = process.env.AZURE_PUBLISH_PROFILE;
+          if (!publishProfile) throw new Error('Missing AZURE_PUBLISH_PROFILE!');
+          fs.writeFileSync('publishProfile.publishsettings', publishProfile);
+
+          log('Deploying to Azure Web App using Azure CLI and publish profile...');
           execSync(
-            `az webapp deployment source config-zip --resource-group "${resourceGroup}" --name "${webappName}" --slot "${slot}" --src release.zip`,
+            `az webapp deployment list-publishing-profiles --name "${process.env.AZURE_WEBAPP_NAME}" --resource-group "${process.env.AZURE_RESOURCE_GROUP}"`,
             { stdio: 'inherit' }
           );
+
+          execSync(
+            `az webapp deployment source config-zip --src release.zip --resource-group "${process.env.AZURE_RESOURCE_GROUP}" --name "${process.env.AZURE_WEBAPP_NAME}" --slot "${process.env.AZURE_WEBAPP_SLOT}" --publish-profile publishProfile.publishsettings`,
+            { stdio: 'inherit' }
+          );
+          fs.unlinkSync('publishProfile.publishsettings');
         },
       }
     ];

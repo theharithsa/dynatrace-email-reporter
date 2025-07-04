@@ -47,6 +47,7 @@ jobs:
       AZURE_WEBAPP_NAME: gen3emailreporting
       AZURE_WEBAPP_SLOT: Production
       AZURE_RESOURCE_GROUP: gen3emailreporting_group
+      AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
     steps:
       - name: 🧾 Checkout Code
         uses: actions/checkout@v4
@@ -61,10 +62,9 @@ jobs:
           npm ci
           npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/exporter-trace-otlp-proto @opentelemetry/resources @opentelemetry/semantic-conventions dotenv
 
-      - name: 🔑 Azure Login
-        uses: azure/login@v2
-        with:
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+      - name: ⬇️ Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       - name: 🏗️ Deploy and Trace All Steps
         run: node pipeline-trace.js Deploy
