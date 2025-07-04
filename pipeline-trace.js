@@ -17,7 +17,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const OTLP_URL = process.env.DYNATRACE_OTLP_URL;
 const OTLP_TOKEN = process.env.DYNATRACE_API_TOKEN;
 const LOG_INGEST_URL = process.env.DYNATRACE_LOG_INGEST_URL;
-const SERVICE_NAME = 'github-ci-pipeline';
+const SERVICE_NAME = 'dt-email-reporter-pipeline-dev';
 
 function log(msg) {
   logger.info(msg);
@@ -38,6 +38,7 @@ async function sendExecutionLogsToDynatrace(logsArray, traceId) {
   const payload = [
     {
       content: JSON.stringify(logsArray, null, 2),
+      env: "dev",
       level: 'INFO',
       timestamp: Date.now(),
       trace_id: traceId,
@@ -222,7 +223,8 @@ async function main() {
                 sha: process.env.GITHUB_SHA,
                 repository: process.env.GITHUB_REPOSITORY,
               },
-              azure: { webapp: process.env.AZURE_WEBAPP_NAME }
+              azure: { webapp: process.env.AZURE_WEBAPP_NAME },
+              env: "dev"
             });
             return; // skip the rest of this step
           } else {
@@ -261,7 +263,8 @@ async function main() {
           sha: process.env.GITHUB_SHA,
           repository: process.env.GITHUB_REPOSITORY,
         },
-        azure: { webapp: process.env.AZURE_WEBAPP_NAME }
+        azure: { webapp: process.env.AZURE_WEBAPP_NAME },
+        env: "dev"
       });
     });
   }
