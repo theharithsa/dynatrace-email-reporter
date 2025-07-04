@@ -97,6 +97,7 @@ async function logToDynatrace(payload) {
   } else if (command === 'start-child') {
     if (!traceIdArg || !parentSpanId) {
       logger.error('❌ Missing trace-id or parent-span-id');
+      // Always print for YAML output
       console.log(`trace_id=${traceIdArg || ''}`);
       console.log(`span_id=`);
       process.exit(1);
@@ -110,18 +111,21 @@ async function logToDynatrace(payload) {
       traceFlags: 1
     });
 
-    let childSpanId;
+    // Synchronously start span and print context
+    let span, spanContext;
     context.with(parentCtx, () => {
-      const span = tracer.startSpan(step);
-      const spanContext = span.spanContext();
-      childSpanId = spanContext.spanId;
-      // DEBUG output
-      console.log(`DEBUG: Child span started for ${step}. trace_id=${spanContext.traceId}, span_id=${childSpanId}, parent_span_id=${parentSpanId}`);
+      span = tracer.startSpan(step);
+      spanContext = span.spanContext();
       // Print for GitHub Actions
       console.log(`trace_id=${spanContext.traceId}`);
-      console.log(`span_id=${childSpanId}`);
+      console.log(`span_id=${spanContext.spanId}`);
     });
 
+    // Additional debug output
+    if (!spanContext?.spanId) {
+      logger.error('❌ spanContext is missing or invalid in start-child!');
+      console.log('DEBUG: spanContext', spanContext);
+    }
     await sdk.shutdown();
 
   } else if (command === 'end-child') {
