@@ -25,6 +25,12 @@ jobs:
       - name: 🚀 Start Build Trace
         run: node trace-cli.js start --step="Build Trace Start"
 
+      - name: 📤 Upload Trace Context Immediately
+        uses: actions/upload-artifact@v4
+        with:
+          name: trace-context
+          path: .trace-context.json
+
       - name: 📦 Install App Dependencies
         run: |
           node trace-cli.js start-child --step="Install Dependencies"
@@ -49,12 +55,6 @@ jobs:
         with:
           name: node-app
           path: release.zip
-
-      - name: 🛡️ Upload Trace Context
-        uses: actions/upload-artifact@v4
-        with:
-          name: trace-context
-          path: .trace-context.json
 
       - name: 🛑 End Build Trace
         run: node trace-cli.js end --step="Build Trace End"
