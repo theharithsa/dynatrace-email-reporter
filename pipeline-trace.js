@@ -7,8 +7,7 @@ import dotenv from 'dotenv';
 import { execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import logger, { logToDynatrace } from './logger.js'; // We'll inline the final send
-
+import logger from './logger.js';
 import fetch from 'node-fetch';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +71,14 @@ async function sendExecutionLogsToDynatrace(logsArray, traceId) {
 async function main() {
   const job = process.argv[2] || 'Build';
 
+  // Prepare deploy timing (if Deploy job)
+  let deployStart = null, deployEnd = null;
+  if (job === 'Deploy') {
+    deployStart = process.env.DEPLOY_START ? parseInt(process.env.DEPLOY_START, 10) * 1000 : null;
+    deployEnd = process.env.DEPLOY_END ? parseInt(process.env.DEPLOY_END, 10) * 1000 : null;
+  }
+
+  // Setup OpenTelemetry Trace Exporter
   const exporter = new OTLPTraceExporter({
     url: OTLP_URL,
     headers: { Authorization: `Api-Token ${OTLP_TOKEN}` }
@@ -87,9 +94,14 @@ async function main() {
   await sdk.start();
   const tracer = otel.trace.getTracer('pipeline-tracer');
 
-  const rootSpan = tracer.startSpan(job, { kind: otel.SpanKind.SERVER });
+  // --- FIX: For Deploy, set root span time to match actual deploy ---
+  const rootSpan = (job === 'Deploy' && deployStart)
+    ? tracer.startSpan(job, { kind: otel.SpanKind.SERVER, startTime: deployStart })
+    : tracer.startSpan(job, { kind: otel.SpanKind.SERVER });
+
   const ctx = otel.trace.setSpan(otel.context.active(), rootSpan);
 
+  // Add GitHub metadata to root span
   rootSpan.setAttribute('github.repository', process.env.GITHUB_REPOSITORY || '');
   rootSpan.setAttribute('github.sha', process.env.GITHUB_SHA || '');
   rootSpan.setAttribute('github.run_id', process.env.GITHUB_RUN_ID || '');
@@ -98,7 +110,6 @@ async function main() {
 
   // This will store each step's result
   const executionLogs = [];
-
   const logExecutionStep = (info) => executionLogs.push(info);
 
   let steps = [];
@@ -147,15 +158,18 @@ async function main() {
 
   for (const step of steps) {
     await otel.context.with(ctx, async () => {
-      const span = tracer.startSpan(step.name, { parent: rootSpan, kind: otel.SpanKind.INTERNAL });
+      let span;
       let duration = 0, start = Date.now(), end, errorMsg = '', status = 'SUCCESS';
       try {
         if (job === 'Deploy' && step.name === 'Azure Web App Deploy (timed)') {
           // For deploy step, use the pre-recorded start/end for real deployment duration
-          const DEPLOY_START = process.env.DEPLOY_START ? parseInt(process.env.DEPLOY_START, 10) * 1000 : null;
-          const DEPLOY_END = process.env.DEPLOY_END ? parseInt(process.env.DEPLOY_END, 10) * 1000 : null;
-          if (DEPLOY_START && DEPLOY_END && DEPLOY_END > DEPLOY_START) {
-            start = DEPLOY_START; end = DEPLOY_END; duration = end - start;
+          if (deployStart && deployEnd && deployEnd > deployStart) {
+            start = deployStart; end = deployEnd; duration = end - start;
+            span = tracer.startSpan(step.name, {
+              parent: rootSpan,
+              kind: otel.SpanKind.INTERNAL,
+              startTime: start
+            });
             span.setAttribute('ci.deploy.duration_ms', duration);
             span.setStatus({ code: otel.SpanStatusCode.OK });
             span.end(end);
@@ -178,7 +192,12 @@ async function main() {
               azure: { webapp: process.env.AZURE_WEBAPP_NAME }
             });
             return; // skip the rest of this step
+          } else {
+            // fallback (no deploy timer info)
+            span = tracer.startSpan(step.name, { parent: rootSpan, kind: otel.SpanKind.INTERNAL });
           }
+        } else {
+          span = tracer.startSpan(step.name, { parent: rootSpan, kind: otel.SpanKind.INTERNAL });
         }
         const { duration: stepDuration, start: realStart, end: realEnd } = await timeAsync(step.name, async () => await step.run());
         duration = stepDuration;
@@ -188,11 +207,11 @@ async function main() {
       } catch (err) {
         status = 'ERROR';
         errorMsg = err.message;
-        span.setStatus({ code: otel.SpanStatusCode.ERROR, message: errorMsg });
+        span && span.setStatus({ code: otel.SpanStatusCode.ERROR, message: errorMsg });
         log(`❌ Step failed: ${step.name}: ${errorMsg}`);
       }
-      span.setAttribute('ci.step.duration_ms', duration);
-      span.end();
+      span && span.setAttribute('ci.step.duration_ms', duration);
+      span && span.end();
       logExecutionStep({
         jobType: job,
         step: step.name,
@@ -202,7 +221,7 @@ async function main() {
         status,
         error: errorMsg,
         traceId: rootSpan.spanContext().traceId,
-        spanId: span.spanContext().spanId,
+        spanId: span ? span.spanContext().spanId : undefined,
         github: {
           workflow: process.env.GITHUB_WORKFLOW,
           run_id: process.env.GITHUB_RUN_ID,
@@ -214,7 +233,12 @@ async function main() {
     });
   }
 
-  rootSpan.end();
+  // --- FIX: End root span for Deploy at deployEnd, else now ---
+  if (job === 'Deploy' && deployEnd) {
+    rootSpan.end(deployEnd);
+  } else {
+    rootSpan.end();
+  }
 
   // At the end, send ALL step logs as a single JSON array to Dynatrace Log Ingest
   await sendExecutionLogsToDynatrace(executionLogs, rootSpan.spanContext().traceId);
