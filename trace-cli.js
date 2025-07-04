@@ -10,6 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
 import fs from 'fs';
+import { randomUUID } from 'crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -21,8 +22,8 @@ const step = stepArg ? stepArg.split('=')[1] : 'Unnamed Step';
 
 const CONTEXT_FILE = path.join(__dirname, '.trace-context.json');
 
-// Setup logging
-const pipelineLogger = winston.createLogger({
+// Winston logger
+const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
@@ -36,19 +37,20 @@ const pipelineLogger = winston.createLogger({
   ],
 });
 
-// Track durations
+// Track duration
 const timers = {};
 function startTimer(label) {
   timers[label] = Date.now();
 }
 function stopTimer(label) {
   const ms = Date.now() - (timers[label] || Date.now());
-  pipelineLogger.info(`${label} took ${ms} ms`);
+  logger.info(`${label} took ${ms} ms`);
   return ms;
 }
 
-function saveContext(traceId, spanId) {
-  fs.writeFileSync(CONTEXT_FILE, JSON.stringify({ traceId, spanId, step }, null, 2));
+// Save & load context
+function saveContext(traceId, parentSpanId) {
+  fs.writeFileSync(CONTEXT_FILE, JSON.stringify({ traceId, parentSpanId }, null, 2));
 }
 
 function loadContext() {
@@ -56,6 +58,7 @@ function loadContext() {
   return JSON.parse(fs.readFileSync(CONTEXT_FILE, 'utf-8'));
 }
 
+// Log to Dynatrace
 async function logToDynatrace(payload) {
   try {
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
@@ -69,17 +72,17 @@ async function logToDynatrace(payload) {
 
     const resultText = await res.text();
     if (res.ok) {
-      pipelineLogger.info('✅ Log sent to Dynatrace');
+      logger.info('✅ Log sent to Dynatrace');
     } else {
-      pipelineLogger.error(`❌ Dynatrace log error: ${res.status} - ${resultText}`);
+      logger.error(`❌ Dynatrace log error: ${res.status} - ${resultText}`);
     }
   } catch (err) {
-    pipelineLogger.error(`❌ Log ingestion failed: ${err.message}`);
+    logger.error(`❌ Log ingestion failed: ${err.message}`);
   }
 }
 
 (async () => {
-  const traceExporter = new OTLPTraceExporter({
+  const exporter = new OTLPTraceExporter({
     url: process.env.DYNATRACE_OTLP_URL,
     headers: {
       Authorization: `Api-Token ${process.env.DYNATRACE_API_TOKEN}`,
@@ -87,49 +90,60 @@ async function logToDynatrace(payload) {
   });
 
   const sdk = new NodeSDK({
-    traceExporter,
+    traceExporter: exporter,
     resource: new Resource({
       [SemanticResourceAttributes.SERVICE_NAME]: 'github-ci-pipeline',
     }),
   });
 
   await sdk.start();
-
   const tracer = trace.getTracer('cli-tracer');
-  const traceContext = loadContext();
-  let span;
+
+  const contextData = loadContext();
+  let span, spanCtx;
 
   if (command === 'start') {
-    pipelineLogger.info(`📍 Starting span: ${step}`);
+    logger.info(`📍 Starting span: ${step}`);
     startTimer('step_duration');
 
-    span = tracer.startSpan(step);
-    const ctx = trace.setSpan(context.active(), span);
-
-    saveContext(span.spanContext().traceId, span.spanContext().spanId);
+    // Reuse traceId if present
+    if (contextData?.traceId) {
+      span = tracer.startSpan(step, {
+        links: [
+          {
+            context: {
+              traceId: contextData.traceId,
+              spanId: contextData.parentSpanId || contextData.traceId.slice(0, 16), // fallback
+              traceFlags: 1,
+            },
+          },
+        ],
+      });
+    } else {
+      span = tracer.startSpan(step);
+    }
 
     span.setAttribute('step', step);
     span.setAttribute('ci.job', 'build-and-deploy');
     span.setAttribute('status', 'started');
 
+    // Save context for next span
+    const spanContext = span.spanContext();
+    saveContext(spanContext.traceId, spanContext.spanId);
+
   } else if (command === 'end') {
-    pipelineLogger.info(`📍 Ending span: ${step}`);
+    logger.info(`📍 Ending span: ${step}`);
     const duration = stopTimer('step_duration');
 
-    span = tracer.startSpan(step, {
-      links: traceContext
-        ? [{ context: { traceId: traceContext.traceId, spanId: traceContext.spanId } }]
-        : [],
-    });
-
+    span = tracer.startSpan(step);
     span.setAttribute('step', step);
     span.setAttribute('ci.job', 'build-and-deploy');
     span.setAttribute('status', 'completed');
     span.end();
 
-    const logPayload = {
+    const payload = {
       timestamp: Date.now(),
-      level: 'INFO',
+      loglevel: 'INFO',
       trace_id: span.spanContext().traceId,
       span_id: span.spanContext().spanId,
       service: 'github-ci-pipeline',
@@ -140,7 +154,7 @@ async function logToDynatrace(payload) {
       'log.source': '/v1/api/trace-cli.js',
     };
 
-    await logToDynatrace(logPayload);
+    await logToDynatrace(payload);
   }
 
   await sdk.shutdown();
