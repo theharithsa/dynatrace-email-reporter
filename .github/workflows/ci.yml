@@ -47,24 +47,30 @@ jobs:
       AZURE_WEBAPP_NAME: gen3emailreporting
       AZURE_WEBAPP_SLOT: Production
       AZURE_RESOURCE_GROUP: gen3emailreporting_group
-      AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+
     steps:
-      - name: 🧾 Checkout Code
-        uses: actions/checkout@v4
+      - name: 📅 Mark Deploy Start Time
+        run: echo "DEPLOY_START=$(date +%s)" >> $GITHUB_ENV
 
-      - name: 📥 Download Artifact
-        uses: actions/download-artifact@v4
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
         with:
-          name: node-app
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+          package: .
+          slot-name: ${{ env.AZURE_WEBAPP_SLOT }}
 
-      - name: ⬇️ Install All Dependencies (including OpenTelemetry)
+      - name: 📅 Mark Deploy End Time
+        run: echo "DEPLOY_END=$(date +%s)" >> $GITHUB_ENV
+
+      - name: 📊 Trace Deploy (including duration)
         run: |
-          npm ci
-          npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/exporter-trace-otlp-proto @opentelemetry/resources @opentelemetry/semantic-conventions dotenv
-
-      - name: ⬇️ Install Azure CLI
-        run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-      - name: 🏗️ Deploy and Trace All Steps
-        run: node pipeline-trace.js Deploy
+          npm install @opentelemetry/sdk-node @opentelemetry/api @opentelemetry/exporter-trace-otlp-proto @opentelemetry/resources @opentelemetry/semantic-conventions
+          node pipeline-trace.js Deploy
+        env:
+          DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
+          DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
+          DEPLOY_START: ${{ env.DEPLOY_START }}
+          DEPLOY_END: ${{ env.DEPLOY_END }}
+          AZURE_WEBAPP_NAME: ${{ env.AZURE_WEBAPP_NAME }}
+          GITHUB_SHA: ${{ github.sha }}
