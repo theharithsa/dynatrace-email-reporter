@@ -20,16 +20,27 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: npm install, build, and test
+      - name: Set environment variables
         run: |
-          npm install
+          echo "DYNATRACE_API_TOKEN=${{ secrets.DYNATRACE_API_TOKEN }}" >> $GITHUB_ENV
+          echo "DYNATRACE_OTLP_URL=${{ secrets.DYNATRACE_OTLP_URL }}" >> $GITHUB_ENV
+          echo "DYNATRACE_LOG_INGEST_URL=${{ secrets.DYNATRACE_LOG_INGEST_URL }}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start trace CLI span
+        run: node trace-cli.js start
+
+      - name: npm build and test
+        run: |
           npm run build --if-present
           npm run test --if-present
 
-      - name: Zip artifact for deployment
+      - name: Zip artifact
         run: zip release.zip ./* -r
 
-      - name: Upload artifact for deployment job
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
@@ -40,16 +51,15 @@ jobs:
     needs: build
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: node-app
 
-      - name: Unzip artifact for deployment
+      - name: Unzip artifact
         run: unzip release.zip
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
+      - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'gen3emailreporting'
@@ -57,15 +67,5 @@ jobs:
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_702906AE83C54163AD1E25C938495ED9 }}
 
-      # ✅ NEW: Run OTEL trace CLI and ingest logs
-      - name: Emit GitHub pipeline trace to Dynatrace
-        env:
-          DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
-          DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
-          DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
-        run: |
-          node trace-cli.js
-
-      # (Optional) View logs if needed
-      - name: Show OTEL CLI logs
-        run: cat logs/pipeline.log || echo "No pipeline log found"
+      - name: End trace CLI span
+        run: node trace-cli.js end
