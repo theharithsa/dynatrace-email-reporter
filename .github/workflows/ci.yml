@@ -14,6 +14,14 @@ jobs:
 
       - name: ⬇️ Install Dependencies
         run: npm ci
+        env:
+          DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
+          DYNATRACE_OTLP_URL: ${{ secrets.DYNATRACE_OTLP_URL }}
+          DYNATRACE_LOG_INGEST_URL: ${{ secrets.DYNATRACE_LOG_INGEST_URL }}
+          AZURE_WEBAPP_NAME: gen3emailreporting
+          AZURE_WEBAPP_SLOT: Production
+          AZURE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BC4BABCD01F44C619462527428A40790 }}
+          AZURE_RESOURCE_GROUP: gen3emailreporting_group
 
       - name: 🏗️ Build and Trace All Steps
         run: node pipeline-trace.js Build
