@@ -2,35 +2,33 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import otelApi from '@opentelemetry/api';
-import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
-import fs from 'fs';
 
 const { trace, context, ROOT_CONTEXT } = otelApi;
-const setSpanContext = trace.setSpanContext;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const args = process.argv.slice(2);
 const command = args[0];
-const stepArg = args.find(arg => arg.startsWith('--step='));
-const traceIdArg = args.find(arg => arg.startsWith('--trace-id='));
-const parentSpanIdArg = args.find(arg => arg.startsWith('--parent-span-id='));
-const endpointArg = args.find(arg => arg.startsWith('--endpoint='));
 
-const step = stepArg ? stepArg.split('=')[1] : 'Unnamed Step';
-const traceIdFromInput = traceIdArg ? traceIdArg.split('=')[1] : null;
-const parentSpanIdFromInput = parentSpanIdArg ? parentSpanIdArg.split('=')[1] : null;
-const endpointName = endpointArg ? endpointArg.split('=')[1] : step;
+const getArg = (name) => {
+  const arg = args.find(arg => arg.startsWith(`--${name}=`));
+  return arg ? arg.split('=')[1] : null;
+};
 
-const CONTEXT_FILE = path.join(__dirname, '.trace-context.json');
+const step = getArg('step') || 'Unnamed Step';
+const endpoint = getArg('endpoint') || 'ci';
+const traceId = getArg('trace-id');
+const parentSpanId = getArg('parent-span-id');
+const spanId = getArg('span-id');
 
+// Logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -44,24 +42,7 @@ const logger = winston.createLogger({
   ]
 });
 
-const timers = {};
-function startTimer(label) {
-  timers[label] = Date.now();
-}
-function stopTimer(label) {
-  const ms = Date.now() - (timers[label] || Date.now());
-  logger.info(`${label} took ${ms} ms`);
-  return ms;
-}
-
-function saveContext(traceId, parentSpanId) {
-  fs.writeFileSync(CONTEXT_FILE, JSON.stringify({ traceId, parentSpanId }, null, 2));
-}
-function loadContext() {
-  if (!fs.existsSync(CONTEXT_FILE)) return null;
-  return JSON.parse(fs.readFileSync(CONTEXT_FILE, 'utf-8'));
-}
-
+// Dynatrace log
 async function logToDynatrace(payload) {
   try {
     const res = await fetch(process.env.DYNATRACE_LOG_INGEST_URL, {
@@ -95,108 +76,100 @@ async function logToDynatrace(payload) {
   const sdk = new NodeSDK({
     traceExporter: exporter,
     resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: 'github-ci-pipeline',
+      'service.name': 'github-ci-pipeline',
     }),
   });
 
   await sdk.start();
   const tracer = trace.getTracer('cli-tracer');
-  const contextData = loadContext();
-  let span;
 
   if (command === 'start') {
-    logger.info(`📍 Starting root trace: ${step}`);
-    startTimer('step_duration');
-
-    span = tracer.startSpan(endpointName);
-    span.setAttribute('ci.job', 'build-or-deploy');
+    const span = tracer.startSpan(endpoint);
+    span.setAttribute('step', step);
+    span.setAttribute('ci.job', endpoint);
     span.setAttribute('status', 'started');
-    span.setAttribute('endpoint', endpointName);
-
     const spanContext = span.spanContext();
-    saveContext(spanContext.traceId, spanContext.spanId);
+
     console.log(`trace_id=${spanContext.traceId}`);
     console.log(`parent_span_id=${spanContext.spanId}`);
 
     span.end();
+  }
 
-  } else if (command === 'start-child') {
-    logger.info(`📍 Starting child span: ${step}`);
-    startTimer('step_duration');
-
-    const traceId = traceIdFromInput || contextData?.traceId;
-    const parentSpanId = parentSpanIdFromInput || contextData?.parentSpanId;
-
+  else if (command === 'start-child') {
     if (!traceId || !parentSpanId) {
-      logger.error('❌ Missing trace or parent span ID. Provide via --trace-id and --parent-span-id.');
+      console.error('Missing trace-id or parent-span-id');
       process.exit(1);
     }
 
-    const parentCtx = setSpanContext(ROOT_CONTEXT, {
+    const ctx = otelApi.trace.setSpanContext(ROOT_CONTEXT, {
       traceId,
       spanId: parentSpanId,
       traceFlags: 1,
     });
 
-    context.with(parentCtx, () => {
-      span = tracer.startSpan(step);
-      span.setAttribute('ci.job', 'build-or-deploy');
-      span.setAttribute('status', 'in-progress');
-      span.setAttribute('endpoint', endpointName);
+    const childSpan = tracer.startSpan(step, undefined, ctx);
+    childSpan.setAttribute('step', step);
+    childSpan.setAttribute('ci.job', endpoint);
+    childSpan.setAttribute('status', 'in-progress');
 
-      const spanContext = span.spanContext();
-      saveContext(traceId, spanContext.spanId);
-      span.end();
+    console.log(`trace_id=${traceId}`);
+    console.log(`parent_span_id=${parentSpanId}`);
+    console.log(`span_id=${childSpan.spanContext().spanId}`);
+  }
+
+  else if (command === 'end-child') {
+    if (!traceId || !spanId) {
+      console.error('Missing trace-id or span-id for ending span.');
+      process.exit(1);
+    }
+
+    const ctx = otelApi.trace.setSpanContext(ROOT_CONTEXT, {
+      traceId,
+      spanId,
+      traceFlags: 1,
     });
 
-  } else if (command === 'end-child') {
-    logger.info(`📍 Ending child span: ${step}`);
-    const duration = stopTimer('step_duration');
-    const traceId = traceIdFromInput || contextData?.traceId;
+    const endSpan = tracer.startSpan(`${step}`, undefined, ctx);
+    endSpan.setAttribute('step', step);
+    endSpan.setAttribute('status', 'completed');
+    endSpan.end();
 
-    span = tracer.startSpan(`${step} - complete`);
-    span.setAttribute('status', 'completed');
-    span.setAttribute('ci.job', 'build-or-deploy');
-    span.setAttribute('endpoint', endpointName);
-    span.end();
-
-    const payload = {
+    await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
       trace_id: traceId,
-      span_id: span.spanContext().spanId,
+      span_id: spanId,
       service: 'github-ci-pipeline',
-      message: `Step Completed: ${step}`,
+      message: `Step completed: ${step}`,
       step,
-      step_duration_ms: duration,
       status: 'success',
-      'log.source': '/v1/api/trace-cli.js',
-    };
+      'log.source': 'trace-cli.js'
+    });
+  }
 
-    await logToDynatrace(payload);
+  else if (command === 'end') {
+    if (!traceId) {
+      console.error('Missing trace-id to end.');
+      process.exit(1);
+    }
 
-  } else if (command === 'end') {
-    logger.info(`📍 Ending trace: ${step}`);
-    const traceId = traceIdFromInput || contextData?.traceId;
+    const endSpan = tracer.startSpan(`${step}-end`);
+    endSpan.setAttribute('ci.job', endpoint);
+    endSpan.setAttribute('status', 'trace-end');
+    endSpan.end();
 
-    span = tracer.startSpan(`${step} - trace-end`);
-    span.setAttribute('ci.job', 'build-or-deploy');
-    span.setAttribute('status', 'trace-end');
-    span.setAttribute('endpoint', endpointName);
-    span.end();
-
-    const payload = {
+    await logToDynatrace({
       timestamp: Date.now(),
       loglevel: 'INFO',
       trace_id: traceId,
-      span_id: span.spanContext().spanId,
+      span_id: endSpan.spanContext().spanId,
       service: 'github-ci-pipeline',
       message: `Trace ended: ${step}`,
       step,
       status: 'trace-end',
-    };
-
-    await logToDynatrace(payload);
+      'log.source': 'trace-cli.js'
+    });
   }
 
   await sdk.shutdown();
