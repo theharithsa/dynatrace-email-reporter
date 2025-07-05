@@ -59,12 +59,13 @@ app.post('/v1/api/send-report', async (req, res) => {
         span_id: spanId,
         service: 'dynatrace-email-reporter',
         'dt.entity.host': 'HOST-69CF503A58882ED2',
-        'log.source': 'v1/api/dynatrace-email-report',
+        'log.source': '/index.js',
         request_headers: req.headers,
         request_payload: jsonData,
         excel_time_ms: excelTime,
         email_time_ms: emailTime,
         total_time_ms: totalTime,
+        "dt.security_context": "Gen3ERT"
       },
     ];
 
